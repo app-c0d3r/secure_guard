@@ -1,0 +1,19 @@
+# Cargo.toml in der Projekt-Wurzel
+[workspace]
+members = [
+    "crates/secureguard-api",
+    "crates/secureguard-agent",
+    "crates/secureguard-shared",
+    "crates/secureguard-cli",
+]
+resolver = "2" # Verbessert die Dependency-Auflösung
+
+# Code-Qualitätstools für das gesamte Workspace
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+all = "warn"
+nursery = "warn"
+cargo = "warn"
+pedantic = "warn"
