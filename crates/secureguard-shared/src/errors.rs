@@ -17,6 +17,18 @@ pub enum SecureGuardError {
     #[error("Tenant not found")]
     TenantNotFound,
     
+    #[error("Not found: {0}")]
+    NotFound(String),
+    
+    #[error("Authentication error: {0}")]
+    AuthenticationError(String),
+    
+    #[error("Subscription limit exceeded: {0}")]
+    SubscriptionLimitExceeded(String),
+    
+    #[error("Feature not available: {0}")]
+    FeatureNotAvailable(String),
+    
     #[error("Invalid input: {0}")]
     InvalidInput(String),
     

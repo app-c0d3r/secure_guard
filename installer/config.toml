@@ -1,0 +1,110 @@
+# SecureGuard Agent Configuration
+# Professional Configuration Template
+
+[server]
+# WebSocket URL for real-time communication with SecureGuard server
+url = "ws://localhost:8080/ws"
+
+# REST API base URL for SecureGuard management server
+api_base = "http://localhost:8080/api/v1"
+
+# Connection timeout in seconds
+timeout = 30
+
+# Retry interval for failed connections (seconds)
+retry_interval = 60
+
+[agent]
+# Unique agent identifier (automatically set to computer name during installation)
+name = "WINDOWS-AGENT"
+
+# Logging level: debug, info, warn, error
+log_level = "info"
+
+# Heartbeat interval in seconds (how often to send status updates)
+heartbeat_interval = 30
+
+# System scan interval in seconds (how often to perform security scans)
+scan_interval = 300
+
+# Maximum number of concurrent security scans
+max_concurrent_scans = 3
+
+[security]
+# Enable end-to-end encryption for all communications
+encryption_enabled = true
+
+# API key for server authentication (will be set during server registration)
+api_key = ""
+
+# Path to SSL certificate file (optional, for custom certificates)
+certificate_path = ""
+
+# Enable signature verification for agent updates
+verify_updates = true
+
+[logging]
+# Log file path
+file_path = "C:\\Program Files\\SecureGuard\\Agent\\logs\\agent.log"
+
+# Maximum size of each log file before rotation
+max_size = "10MB"
+
+# Number of rotated log files to retain
+max_files = 5
+
+# Enable console output (useful for debugging, disable in production)
+console_output = false
+
+# Log format: json, text
+format = "text"
+
+[performance]
+# CPU usage limit (percentage, 0-100)
+cpu_limit = 25
+
+# Memory usage limit (MB)
+memory_limit = 512
+
+# Network bandwidth limit (KB/s, 0 = unlimited)
+bandwidth_limit = 1024
+
+# Scan thread priority: low, normal, high
+scan_priority = "low"
+
+[monitoring]
+# File system monitoring settings
+monitor_file_changes = true
+monitor_network_connections = true
+monitor_process_creation = true
+monitor_registry_changes = true
+
+# Excluded paths from monitoring (comma-separated)
+excluded_paths = [
+    "C:\\Windows\\Temp",
+    "C:\\Users\\*\\AppData\\Local\\Temp",
+    "C:\\Program Files\\SecureGuard\\Agent\\logs"
+]
+
+# Excluded processes from monitoring
+excluded_processes = [
+    "System",
+    "Idle",
+    "secureguard-agent.exe"
+]
+
+[updates]
+# Enable automatic updates
+auto_update = true
+
+# Update check interval in hours
+check_interval = 24
+
+# Update server URL
+update_server = "https://updates.secureguard.com"
+
+# Backup configuration before updates
+backup_config = true
+
+# Restart service after updates
+restart_after_update = true

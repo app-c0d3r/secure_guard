@@ -24,7 +24,11 @@
       "Bash(scripts/myservice.bat start:*)",
       "Bash(C:UserssmithDocumentsDEVsecure_guardtargetreleasesecureguard-agent.exe --help)",
       "Bash(\"C:\\Users\\smith\\Documents\\DEV\\secure_guard\\target\\release\\secureguard-agent.exe\" --version)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git reset:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm install)",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": [],

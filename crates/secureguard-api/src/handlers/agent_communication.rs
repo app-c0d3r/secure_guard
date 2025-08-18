@@ -224,6 +224,10 @@ pub async fn get_agent_status_detailed(
             last_heartbeat: Some(chrono::Utc::now()),
             version: "1.0.0".to_string(),
             created_at: chrono::Utc::now() - chrono::Duration::hours(24),
+            user_id: Some(Uuid::new_v4()),
+            device_name: Some("WIN-DESKTOP-001".to_string()),
+            registered_via_key_id: None,
+            registered_via_token_id: None,
         },
         connection: Some(AgentConnection {
             agent_id,
@@ -268,6 +272,10 @@ pub async fn list_agents_with_status(
                 last_heartbeat: Some(chrono::Utc::now() - chrono::Duration::minutes((i * 10) as i64)),
                 version: "1.0.0".to_string(),
                 created_at: chrono::Utc::now() - chrono::Duration::days(i as i64),
+                user_id: Some(Uuid::new_v4()),
+                device_name: Some(format!("WIN-DESKTOP-{:03}", i + 1)),
+                registered_via_key_id: None,
+                registered_via_token_id: None,
             },
             connection: if i % 4 != 0 {
                 Some(AgentConnection {

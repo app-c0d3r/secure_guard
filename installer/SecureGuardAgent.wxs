@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product 
+    Id="{12345678-1234-1234-1234-123456789ABC}" 
+    Name="SecureGuard Agent" 
+    Language="1033" 
+    Version="1.0.0" 
+    Manufacturer="SecureGuard Technologies" 
+    UpgradeCode="{87654321-4321-4321-4321-CBA987654321}">
+    
+    <Package 
+      InstallerVersion="200" 
+      Compressed="yes" 
+      InstallScope="perMachine"
+      Description="SecureGuard Security Agent - Enterprise endpoint security monitoring"
+      Comments="Professional security monitoring agent for Windows systems" />
+
+    <!-- Media and Cabinet -->
+    <Media Id="1" Cabinet="SecureGuardAgent.cab" EmbedCab="yes" />
+
+    <!-- Major Upgrade -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <!-- Prerequisites -->
+    <Condition Message="This application requires Windows 10 or higher.">
+      <![CDATA[Installed OR (VersionNT >= 603)]]>
+    </Condition>
+
+    <Condition Message="You must be an administrator to install this product.">
+      Privileged
+    </Condition>
+
+    <!-- Features -->
+    <Feature Id="MainFeature" Title="SecureGuard Agent" Level="1" Description="Core security agent functionality">
+      <ComponentGroupRef Id="AgentFiles" />
+      <ComponentGroupRef Id="ServiceComponent" />
+      <ComponentRef Id="RegistryEntries" />
+      <ComponentRef Id="FirewallRules" />
+    </Feature>
+
+    <!-- Directory Structure -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="CompanyFolder" Name="SecureGuard">
+          <Directory Id="INSTALLFOLDER" Name="Agent">
+            <Directory Id="LogsFolder" Name="logs" />
+            <Directory Id="ConfigFolder" Name="config" />
+          </Directory>
+        </Directory>
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="SecureGuard Agent" />
+      </Directory>
+      <Directory Id="DesktopFolder" Name="Desktop" />
+    </Directory>
+
+    <!-- Components -->
+    <ComponentGroup Id="AgentFiles">
+      <Component Id="MainExecutable" Guid="{11111111-1111-1111-1111-111111111111}" Directory="INSTALLFOLDER">
+        <File Id="SecureGuardAgentExe" 
+              Source="$(var.SourcePath)\secureguard-agent.exe" 
+              KeyPath="yes" 
+              Checksum="yes" />
+      </Component>
+      
+      <Component Id="ConfigurationFile" Guid="{22222222-2222-2222-2222-222222222222}" Directory="ConfigFolder">
+        <File Id="ConfigFile" 
+              Source="config.toml" 
+              KeyPath="yes" />
+      </Component>
+      
+      <Component Id="LogDirectory" Guid="{33333333-3333-3333-3333-333333333333}" Directory="LogsFolder">
+        <CreateFolder />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Windows Service -->
+    <ComponentGroup Id="ServiceComponent">
+      <Component Id="SecureGuardService" Guid="{44444444-4444-4444-4444-444444444444}" Directory="INSTALLFOLDER">
+        <ServiceInstall Id="SecureGuardAgentService"
+                        Name="SecureGuardAgent"
+                        DisplayName="SecureGuard Security Agent"
+                        Description="SecureGuard security monitoring agent - monitors system for threats and security events"
+                        Type="ownProcess"
+                        Start="auto"
+                        Account="LocalSystem"
+                        ErrorControl="normal"
+                        Interactive="no">
+          <ServiceDependency Id="Tcpip" />
+        </ServiceInstall>
+        
+        <ServiceControl Id="StartSecureGuardService"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Name="SecureGuardAgent"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Registry Entries -->
+    <Component Id="RegistryEntries" Guid="{55555555-5555-5555-5555-555555555555}" Directory="INSTALLFOLDER">
+      <RegistryKey Root="HKLM" Key="SOFTWARE\SecureGuard\Agent">
+        <RegistryValue Name="InstallPath" Value="[INSTALLFOLDER]" Type="string" KeyPath="yes" />
+        <RegistryValue Name="Version" Value="1.0.0" Type="string" />
+        <RegistryValue Name="ServiceName" Value="SecureGuardAgent" Type="string" />
+      </RegistryKey>
+    </Component>
+
+    <!-- Firewall Rules -->
+    <Component Id="FirewallRules" Guid="{66666666-6666-6666-6666-666666666666}" Directory="INSTALLFOLDER">
+      <fire:FirewallException Id="SecureGuardAgentOutbound"
+                              Name="SecureGuard Agent"
+                              Program="[INSTALLFOLDER]secureguard-agent.exe"
+                              Direction="out"
+                              Protocol="tcp"
+                              Scope="any" />
+      <fire:FirewallException Id="SecureGuardAgentInbound"
+                              Name="SecureGuard Agent Inbound"
+                              Program="[INSTALLFOLDER]secureguard-agent.exe"
+                              Direction="in"
+                              Protocol="tcp"
+                              Scope="any" />
+    </Component>
+
+    <!-- Start Menu Shortcuts -->
+    <Component Id="StartMenuShortcuts" Guid="{77777777-7777-7777-7777-777777777777}" Directory="ApplicationProgramsFolder">
+      <Shortcut Id="ManagementShortcut"
+                Name="SecureGuard Agent Manager"
+                Description="Manage SecureGuard Agent service"
+                Target="[INSTALLFOLDER]manage.bat"
+                WorkingDirectory="INSTALLFOLDER" />
+      <Shortcut Id="ConfigShortcut"
+                Name="Agent Configuration"
+                Description="Edit SecureGuard Agent configuration"
+                Target="notepad.exe"
+                Arguments="[ConfigFolder]config.toml"
+                WorkingDirectory="ConfigFolder" />
+      <Shortcut Id="LogsShortcut"
+                Name="View Logs"
+                Description="View SecureGuard Agent logs"
+                Target="[LogsFolder]"
+                WorkingDirectory="LogsFolder" />
+      <Shortcut Id="UninstallShortcut"
+                Name="Uninstall SecureGuard Agent"
+                Description="Remove SecureGuard Agent from this computer"
+                Target="msiexec.exe"
+                Arguments="/x [ProductCode]" />
+      <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="Software\SecureGuard\Agent" Name="StartMenuShortcuts" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <!-- Custom Actions -->
+    <CustomAction Id="ConfigureAgent" 
+                  BinaryKey="ConfigureBinary" 
+                  DllEntry="ConfigureAgentAction" 
+                  Execute="deferred" 
+                  Impersonate="no" />
+
+    <!-- Installation Sequences -->
+    <InstallExecuteSequence>
+      <Custom Action="ConfigureAgent" After="InstallServices">NOT Installed</Custom>
+    </InstallExecuteSequence>
+
+    <!-- UI -->
+    <UIRef Id="WixUI_FeatureTree" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+
+    <!-- License -->
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+    
+    <!-- Branding -->
+    <WixVariable Id="WixUIBannerBmp" Value="Banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="Dialog.bmp" />
+
+    <!-- Properties for custom configuration -->
+    <Property Id="SERVER_URL" Value="ws://localhost:8080/ws" />
+    <Property Id="API_BASE_URL" Value="http://localhost:8080/api/v1" />
+    <Property Id="AGENT_NAME" Value="[ComputerName]" />
+    <Property Id="LOG_LEVEL" Value="info" />
+
+  </Product>
+
+  <!-- Extensions -->
+  <Fragment>
+    <Binary Id="ConfigureBinary" SourceFile="CustomActions.dll" />
+  </Fragment>
+
+</Wix>

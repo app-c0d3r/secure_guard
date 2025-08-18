@@ -145,6 +145,8 @@ impl AgentCommunicationService {
                 "mac_address": request.mac_address
             }),
             version: version.clone(),
+            api_key: "dummy_key".to_string(), // TODO: Extract from authentication
+            device_name: request.hostname.clone(),
         };
         let agent = self.agent_service.register_agent(Uuid::new_v4(), register_request).await?;
         

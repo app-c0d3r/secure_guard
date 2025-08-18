@@ -3,7 +3,6 @@ use std::sync::Arc;
 use tokio::sync::{RwLock, mpsc};
 use uuid::Uuid;
 use axum::extract::ws::WebSocket;
-use futures_util::SinkExt;
 use secureguard_shared::{AgentMessage, DashboardMessage};
 use tracing::{info, warn, error};
 
