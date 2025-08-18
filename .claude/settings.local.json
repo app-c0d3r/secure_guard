@@ -30,7 +30,8 @@
       "Bash(npm install)",
       "Bash(psql:*)",
       "Bash(.scriptsmyservice.bat stop prod)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": [],
