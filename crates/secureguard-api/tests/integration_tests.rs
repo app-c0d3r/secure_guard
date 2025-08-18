@@ -5,7 +5,7 @@ use axum::{
 use secureguard_api::{create_app, database::Database};
 use secureguard_shared::{CreateUserRequest, LoginRequest, RegisterAgentRequest, AuthResponse};
 use serde_json::json;
-use tower::ServiceExt;
+use tower::util::ServiceExt;
 use http_body_util::BodyExt;
 
 async fn setup_test_app() -> axum::Router {

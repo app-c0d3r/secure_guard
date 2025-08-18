@@ -23,7 +23,8 @@
       "Bash(mv:*)",
       "Bash(scripts/myservice.bat start:*)",
       "Bash(C:UserssmithDocumentsDEVsecure_guardtargetreleasesecureguard-agent.exe --help)",
-      "Bash(\"C:\\Users\\smith\\Documents\\DEV\\secure_guard\\target\\release\\secureguard-agent.exe\" --version)"
+      "Bash(\"C:\\Users\\smith\\Documents\\DEV\\secure_guard\\target\\release\\secureguard-agent.exe\" --version)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": [],
