@@ -2,9 +2,8 @@
 [workspace]
 members = [
     "crates/secureguard-api",
-    "crates/secureguard-agent",
     "crates/secureguard-shared",
-    "crates/secureguard-cli",
+    "crates/secureguard-agent",
 ]
 resolver = "2" # Verbessert die Dependency-Auflösung
 

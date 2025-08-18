@@ -1,0 +1,91 @@
+[package]
+name = "secureguard-agent"
+version = "1.0.0"
+edition = "2021"
+authors = ["SecureGuard Team"]
+description = "SecureGuard security monitoring agent"
+license = "MIT"
+
+[[bin]]
+name = "secureguard-agent"
+path = "src/main.rs"
+
+[dependencies]
+# Core dependencies
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Configuration
+config = "0.14"
+toml = "0.8"
+
+# Networking
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+reqwest = { version = "0.11", features = ["json", "native-tls"] }
+url = "2.4"
+
+# Encryption and Security
+aes-gcm = "0.10"
+sha2 = "0.10"
+hmac = "0.12"
+rand = "0.8"
+
+# System monitoring
+sysinfo = "0.29"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
+
+# System utilities
+gethostname = "0.4"
+
+# Platform-specific dependencies
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.51", features = [
+    "Win32_Foundation",
+    "Win32_System_Services",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+    "Win32_Security",
+    "Win32_System_Registry",
+    "Win32_System_ProcessStatus",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_System_Performance",
+] }
+winapi = { version = "0.3", features = ["winuser", "processthreadsapi", "handleapi"] }
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.27", features = ["process", "signal", "fs"] }
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.9"
+system-configuration = "0.5"
+
+# Development dependencies
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3.0"
+serial_test = "2.0"
+
+# Release optimizations
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Agent-specific features
+[features]
+default = ["monitoring", "security", "networking"]
+monitoring = []
+security = []
+networking = []
+debug-mode = []
