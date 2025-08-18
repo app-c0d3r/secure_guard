@@ -5,6 +5,7 @@ import Cookies from 'js-cookie'
 export interface User {
   id: string
   username: string
+  name?: string
   email: string
   role: 'system_admin' | 'security_analyst' | 'admin' | 'manager' | 'power_user' | 'user' | 'read_only' | 'guest'
   permissions: string[]

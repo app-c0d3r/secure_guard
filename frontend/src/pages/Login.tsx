@@ -115,21 +115,8 @@ export default function Login() {
     setIsLoading(true)
 
     try {
-      // Simulate API call with security headers
-      const loginData = {
-        email: email.toLowerCase().trim(),
-        password,
-        captchaToken: securityState.requiresCaptcha ? captchaToken : null,
-        fingerprint: {
-          userAgent: navigator.userAgent,
-          language: navigator.language,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          screen: `${screen.width}x${screen.height}`,
-          timestamp: Date.now()
-        }
-      }
-
-      // In real implementation, this would be an API call
+      // In real implementation, this would be an API call with security headers
+      // including email, password, captchaToken, and browser fingerprint
       await new Promise(resolve => setTimeout(resolve, 1500))
       
       // Simulate login success/failure
@@ -142,6 +129,7 @@ export default function Login() {
         const user = {
           id: '1',
           username: 'admin',
+          name: 'Admin User',
           email,
           role: 'admin' as const,
           permissions: ['read', 'write', 'admin', 'control_agents', 'view_assets', 'assets.view', 'users.read', 'secrets.read', 'subscriptions.read', 'security.incidents'],

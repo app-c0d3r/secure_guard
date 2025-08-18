@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { motion } from 'framer-motion';
 import { 
   XMarkIcon,
   PlayIcon,

@@ -28,10 +28,15 @@
       "Bash(git reset:*)",
       "Bash(npm run dev:*)",
       "Bash(npm install)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(.scriptsmyservice.bat stop prod)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": [],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "C:\\c\\Users\\smith\\Documents\\DEV"
+    ]
   }
 }

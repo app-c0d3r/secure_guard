@@ -58,15 +58,16 @@ if %ERRORLEVEL% NEQ 0 (
 echo [2/3] Starting Rust Backend Server (Debug Mode)...
 start "SecureGuard API [DEV]" cmd /k "cd /d "%~dp0.." && cd crates\secureguard-api && cargo run"
 
-echo [3/3] Starting React Dashboard (Development)...
+echo [3/3] Starting React Frontend (Development)...
 timeout /t 5 /nobreak > nul
-start "SecureGuard Dashboard [DEV]" cmd /k "cd /d "%~dp0.." && cd dashboard && set PORT=3002 && npm start"
+start "SecureGuard Frontend [DEV]" cmd /k "cd /d "%~dp0.." && cd frontend && set PORT=3002 && npm run dev"
 
 echo.
 echo ✅ Development Environment Started
-echo 🔗 Dashboard: http://localhost:3002
+echo 🔗 Frontend: http://localhost:3002 (React + Vite)
 echo 🔗 API: http://localhost:3000/api
 echo 📊 Database: localhost:5432 (secureguard_dev)
+echo 🎨 Themes: Dark/Light mode available in header navigation
 goto :eof
 
 :start_prod
@@ -86,15 +87,17 @@ if %ERRORLEVEL% NEQ 0 (
 echo [2/3] Building and Starting Rust Backend Server (Release Mode)...
 start "SecureGuard API [PROD]" cmd /k "cd /d "%~dp0.." && cd crates\secureguard-api && cargo run --release"
 
-echo [3/3] Building and Starting React Dashboard (Production)...
+echo [3/3] Building and Starting React Frontend (Production)...
 timeout /t 5 /nobreak > nul
-start "SecureGuard Dashboard [PROD]" cmd /k "cd /d "%~dp0.." && cd dashboard && npm run build && npx serve -s build -l 3002"
+start "SecureGuard Frontend [PROD]" cmd /k "cd /d "%~dp0.." && cd frontend && npm run build && npm run preview -- --port 3002"
 
 echo.
 echo ✅ Production Environment Started
-echo 🔗 Dashboard: http://localhost:3002
+echo 🔗 Frontend: http://localhost:3002 (Production Build)
 echo 🔗 API: http://localhost:3000/api
 echo 📊 Database: localhost:5432 (secureguard_prod)
+echo 🎨 Themes: Dark/Light mode available in header navigation
+echo 🔐 Demo Login: admin@company.com / SecurePass123!
 goto :eof
 
 :stop_dev

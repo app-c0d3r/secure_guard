@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ComputerDesktopIcon,
@@ -10,7 +10,6 @@ import {
   ExclamationTriangleIcon,
   CpuChipIcon,
   CircleStackIcon,
-  SignalIcon,
   EllipsisVerticalIcon
 } from '@heroicons/react/24/outline';
 import { Menu, Transition } from '@headlessui/react';

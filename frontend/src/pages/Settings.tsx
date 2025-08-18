@@ -6,7 +6,7 @@ import {
   BellIcon,
   UserIcon,
   GlobeAltIcon,
-  DatabaseIcon,
+  CircleStackIcon as DatabaseIcon,
   KeyIcon,
   EyeIcon,
   PencilIcon

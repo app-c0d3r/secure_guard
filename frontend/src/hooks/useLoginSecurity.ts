@@ -173,7 +173,6 @@ export function useLoginSecurity(email: string) {
 
   // Check if current time is within suspicious pattern
   const detectSuspiciousPatterns = useCallback(() => {
-    const now = Date.now()
     const recentAttempts = getRecentAttempts(60000) // Last minute
     
     // Detect rapid-fire attempts

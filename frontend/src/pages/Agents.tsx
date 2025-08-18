@@ -2,17 +2,30 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { 
   PlusIcon, 
-  FunnelIcon, 
   MagnifyingGlassIcon,
   ComputerDesktopIcon
 } from '@heroicons/react/24/outline'
 import AgentCard from '@/components/Agents/AgentCard'
+
+interface Agent {
+  id: string
+  name: string
+  hostname: string
+  status: 'online' | 'offline' | 'warning'
+  lastSeen: string
+  version: string
+  os: string
+  ip: string
+  threats: number
+  uptime: string
+  subscription: string
+}
 import AgentFilters from '@/components/Agents/AgentFilters'
 import AddAgentModal from '@/components/Agents/AddAgentModal'
 import { cn } from '@/lib/utils'
 
 // Mock data
-const agents = [
+const agents: Agent[] = [
   {
     id: '1',
     name: 'WS-001',

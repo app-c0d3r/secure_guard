@@ -4,9 +4,7 @@ import {
   ShieldCheckIcon,
   ExclamationTriangleIcon,
   EyeIcon,
-  FunnelIcon,
-  MagnifyingGlassIcon,
-  ComputerDesktopIcon
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
@@ -109,7 +107,7 @@ export default function Security() {
   const [selectedSeverity, setSelectedSeverity] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   
-  const isAdmin = user?.role === 'admin' || user?.role === 'System Administrator'
+  const isAdmin = user?.role === 'admin' || user?.role === 'system_admin'
 
   const filteredIncidents = incidents.filter(incident => {
     const matchesSearch = incident.title.toLowerCase().includes(searchTerm.toLowerCase()) ||

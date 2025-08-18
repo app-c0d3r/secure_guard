@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+README.md
+
+# Development
+.env*
+.vscode/
+.claude/
+
+# Build artifacts
+target/
+node_modules/
+frontend/dist/
+frontend/node_modules/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# Scripts and tools
+scripts/
+installer/
+agent-deployment/
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore

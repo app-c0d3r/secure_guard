@@ -126,17 +126,8 @@ const subscriptionPlans = [
   }
 ]
 
-const featureIcons = {
-  agents: ComputerDesktopIcon,
-  apiKeys: KeyIcon,
-  storage: ClockIcon,
-  support: UsersIcon,
-  sla: CheckIcon
-}
-
 export default function SubscriptionManagement() {
   const [selectedPlan, setSelectedPlan] = useState(subscriptionPlans[0])
-  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const formatFeatureValue = (key: string, value: any) => {
     if (value === -1 || value === 'Unlimited') return 'Unbegrenzt'
@@ -159,7 +150,6 @@ export default function SubscriptionManagement() {
           </p>
         </div>
         <button 
-          onClick={() => setShowCreateModal(true)}
           className="btn-primary"
         >
           <PlusIcon className="h-5 w-5 mr-2" />

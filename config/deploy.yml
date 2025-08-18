@@ -1,0 +1,74 @@
+# Kamal deployment configuration for SecureGuard
+service: secureguard
+image: secureguard-app
+
+# Configure SSH access to your servers
+ssh:
+  user: deploy
+  
+# Define your servers
+servers:
+  web:
+    - YOUR_SERVER_IP
+  # workers:
+  #   - YOUR_WORKER_SERVER_IP
+
+# Configure your Docker registry
+registry:
+  server: ghcr.io
+  username: YOUR_GITHUB_USERNAME
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# Environment variables
+env:
+  clear:
+    RAILS_ENV: production
+    NODE_ENV: production
+  secret:
+    - DATABASE_URL
+    - JWT_SECRET
+    - REDIS_URL
+
+# Database configuration (if using external DB)
+# accessories:
+#   db:
+#     image: postgres:15
+#     host: YOUR_DB_SERVER
+#     env:
+#       clear:
+#         POSTGRES_DB: secureguard_prod
+#       secret:
+#         - POSTGRES_PASSWORD
+#     directories:
+#       - data:/var/lib/postgresql/data
+
+# Configure healthcheck
+healthcheck:
+  path: /health
+  port: 3000
+  max_attempts: 7
+  interval: 20s
+
+# Asset configuration for static files
+# asset_path: /rails/public/assets
+
+# Configure builder for multi-stage builds
+builder:
+  args:
+    RUBY_VERSION: 3.2.0
+  
+# Configure volumes if needed
+# volumes:
+#   - ./storage:/rails/storage
+
+# Configure load balancing (if multiple servers)
+# load_balancer:
+#   - YOUR_LOAD_BALANCER_IP
+
+# Aliases for easy deployment to different environments
+aliases:
+  console: app exec --interactive --reuse "bin/rails console"
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs --follow
+  dbc: accessory exec db --interactive --reuse "psql -U postgres -d secureguard_prod"

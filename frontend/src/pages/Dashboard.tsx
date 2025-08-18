@@ -3,9 +3,7 @@ import {
   ComputerDesktopIcon, 
   ShieldCheckIcon, 
   ExclamationTriangleIcon, 
-  UsersIcon,
-  ArrowUpIcon,
-  ArrowDownIcon
+  UsersIcon
 } from '@heroicons/react/24/outline'
 import StatsCard from '@/components/Dashboard/StatsCard'
 import AgentStatusChart from '@/components/Dashboard/AgentStatusChart'

@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import AssetGrid from '@/components/Assets/AssetGrid';
 import AssetFilters from '@/components/Assets/AssetFilters';
-import AssetControls from '@/components/Assets/AssetControls';
 import BulkOperations from '@/components/Assets/BulkOperations';
 import { 
   ComputerDesktopIcon, 
-  ServerIcon,
   ShieldCheckIcon,
   ExclamationTriangleIcon,
   ClockIcon

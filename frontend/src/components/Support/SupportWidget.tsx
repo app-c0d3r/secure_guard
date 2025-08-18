@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ChatBubbleLeftRightIcon,
-  QuestionMarkCircleIcon,
   XMarkIcon,
   PaperAirplaneIcon
 } from '@heroicons/react/24/outline'
