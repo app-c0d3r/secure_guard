@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rustc --version)",
+      "Bash(cargo --version)",
+      "Bash(docker exec:*)",
+      "Bash(chmod:*)",
+      "Bash(./scripts/setup_dev_fixed.sh:*)",
+      "Bash(cargo check:*)",
+      "Bash(set DATABASE_URL=postgresql://postgres:password@localhost:5432/secureguard)",
+      "Bash(sqlx-cli:*)",
+      "Bash(set DATABASE_URL=postgresql://secureguard:password@localhost:5432/secureguard_dev)",
+      "Bash(cargo:*)",
+      "Bash(docker-compose:*)",
+      "Bash(sqlx migrate:*)",
+      "Bash(rg:*)",
+      "Bash(set DATABASE_URL_TEST=postgresql://secureguard:password@localhost:5432/secureguard_dev)",
+      "Bash(curl:*)",
+      "Bash(set RUST_LOG=secureguard_api=debug,tower_http=debug,axum=debug)",
+      "Bash(npx create-react-app:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm start)",
+      "Bash(mv:*)",
+      "Bash(scripts/myservice.bat start:*)",
+      "Bash(C:UserssmithDocumentsDEVsecure_guardtargetreleasesecureguard-agent.exe --help)",
+      "Bash(\"C:\\Users\\smith\\Documents\\DEV\\secure_guard\\target\\release\\secureguard-agent.exe\" --version)"
+    ],
+    "deny": [],
+    "ask": [],
+    "defaultMode": "acceptEdits"
+  }
+}

@@ -1,0 +1,1 @@
+// Communication protocol definitions - placeholder
