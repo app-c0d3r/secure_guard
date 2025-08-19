@@ -6,6 +6,7 @@ use secureguard_shared::{
     Result, SecureGuardError,
 };
 use sqlx::PgPool;
+use tracing;
 use uuid::Uuid;
 
 pub struct AgentService {
@@ -36,12 +37,34 @@ impl AgentService {
             .validate_api_key(&request.api_key)
             .await?;
 
+        tracing::info!(
+            target: "secureguard_api",
+            event = "agent_registration_started",
+            user_id = %user_id,
+            key_id = %key_id,
+            device_name = %request.device_name,
+            hardware_fingerprint = %request.hardware_fingerprint,
+            version = %request.version,
+            "Agent registration process started"
+        );
+
         // Check subscription limits BEFORE registration
         let device_limit_check = self
             .subscription_service
             .can_register_device(user_id)
             .await?;
         if !device_limit_check.allowed {
+            tracing::warn!(
+                target: "secureguard_api",
+                event = "agent_registration_failed",
+                user_id = %user_id,
+                key_id = %key_id,
+                device_name = %request.device_name,
+                reason = "subscription_limit_exceeded",
+                message = %device_limit_check.message,
+                status = "failed",
+                "Agent registration failed - subscription limit exceeded"
+            );
             return Err(SecureGuardError::SubscriptionLimitExceeded(
                 format!("Device registration failed: {}. Please upgrade your subscription to register more devices.", 
                     device_limit_check.message)
@@ -68,6 +91,17 @@ impl AgentService {
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
         if existing.is_some() {
+            tracing::warn!(
+                target: "secureguard_api",
+                event = "agent_registration_failed",
+                user_id = %user_id,
+                key_id = %key_id,
+                device_name = %request.device_name,
+                hardware_fingerprint = %request.hardware_fingerprint,
+                reason = "duplicate_hardware_fingerprint",
+                status = "failed",
+                "Agent registration failed - duplicate hardware fingerprint"
+            );
             return Err(SecureGuardError::ValidationError(
                 "Agent with this hardware fingerprint already exists".to_string(),
             ));
@@ -123,6 +157,20 @@ impl AgentService {
             // Log the error but don't fail registration - device is already created
             tracing::warn!("Failed to update device count for user {}: {}", user_id, e);
         }
+
+        tracing::info!(
+            target: "secureguard_api",
+            event = "agent_registration_success",
+            user_id = %user_id,
+            agent_id = %agent.agent_id,
+            key_id = %key_id,
+            device_name = %agent.device_name.as_deref().unwrap_or("unknown"),
+            hardware_fingerprint = %agent.hardware_fingerprint,
+            version = %agent.version,
+            tenant_id = %agent.tenant_id,
+            status = "success",
+            "Agent registered successfully"
+        );
 
         Ok(agent)
     }

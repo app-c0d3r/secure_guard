@@ -46,7 +46,10 @@
       "Bash(.scriptsmyservice.bat status prod)",
       "Bash(powershell:*)",
       "Bash(rm:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(timeout:*)",
+      "Bash(scripts/run_workflow_tests.bat)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": [],

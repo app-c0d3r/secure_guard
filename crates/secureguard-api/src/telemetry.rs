@@ -12,7 +12,10 @@ use opentelemetry_semantic_conventions::resource::{
 };
 use prometheus::{Encoder, TextEncoder};
 use std::time::Duration;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
+use tracing_appender::{non_blocking, rolling};
+use tracing_subscriber::{
+    filter::FilterExt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer, Registry,
+};
 
 /// Initialize OpenTelemetry with OTLP exporter for traces and Prometheus for metrics
 pub fn init_telemetry() -> anyhow::Result<()> {
@@ -54,16 +57,64 @@ pub fn init_telemetry() -> anyhow::Result<()> {
         EnvFilter::new("secureguard_api=debug,tower_http=debug,opentelemetry=trace")
     });
 
+    // Console layer for stdout/stderr
     let fmt_layer = tracing_subscriber::fmt::layer()
         .with_target(true)
         .with_thread_ids(true)
         .with_thread_names(true);
 
+    // Create logs directory if it doesn't exist
+    std::fs::create_dir_all("./logs").unwrap_or_else(|e| {
+        eprintln!("Warning: Failed to create logs directory: {}", e);
+    });
+
+    // File layer with daily rotation for general logs
+    let file_appender = rolling::daily("./logs", "secureguard-api.log");
+    let (non_blocking_file, _guard) = non_blocking(file_appender);
+    let file_layer = tracing_subscriber::fmt::layer()
+        .with_writer(non_blocking_file)
+        .with_ansi(false) // No colors for files
+        .json() // Structured JSON logging for parsing
+        .with_target(true)
+        .with_thread_ids(true)
+        .with_thread_names(true);
+
+    // Security audit layer with separate file
+    let security_appender = rolling::daily("./logs", "security-audit.log");
+    let (non_blocking_security, _security_guard) = non_blocking(security_appender);
+    let security_layer = tracing_subscriber::fmt::layer()
+        .with_writer(non_blocking_security)
+        .with_ansi(false)
+        .json()
+        .with_target(true)
+        .with_filter(
+            EnvFilter::new("secureguard_api[security]=info")
+                .or(EnvFilter::new("secureguard_api[audit]=info"))
+        );
+
+    // Error log layer for errors only
+    let error_appender = rolling::daily("./logs", "error.log");
+    let (non_blocking_error, _error_guard) = non_blocking(error_appender);
+    let error_layer = tracing_subscriber::fmt::layer()
+        .with_writer(non_blocking_error)
+        .with_ansi(false)
+        .json()
+        .with_target(true)
+        .with_filter(EnvFilter::new("error"));
+
     Registry::default()
         .with(env_filter)
-        .with(fmt_layer)
-        .with(telemetry_layer)
+        .with(fmt_layer)           // Console output
+        .with(file_layer)          // General structured logs to file
+        .with(security_layer)      // Security audit logs
+        .with(error_layer)         // Error-only logs
+        .with(telemetry_layer)     // OpenTelemetry tracing
         .init();
+
+    // Store guards to prevent them from being dropped
+    std::mem::forget(_guard);
+    std::mem::forget(_security_guard);
+    std::mem::forget(_error_guard);
 
     // Set global propagator for distributed tracing
     global::set_text_map_propagator(TraceContextPropagator::new());
@@ -74,6 +125,10 @@ pub fn init_telemetry() -> anyhow::Result<()> {
     tracing::info!(
         "OpenTelemetry initialized with OTLP endpoint: {}",
         otlp_endpoint
+    );
+    
+    tracing::info!(
+        "Enhanced logging initialized - Console: enabled, Files: ./logs/ (daily rotation), Security audit: enabled, Error logs: enabled"
     );
 
     Ok(())

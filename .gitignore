@@ -19,6 +19,7 @@ yarn-error.log*
 /frontend/build/
 
 # IDE and editor files
+.claude/
 .vscode/
 .idea/
 *.swp

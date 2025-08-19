@@ -68,7 +68,23 @@ A cloud-native cybersecurity platform with lightweight agent-based threat detect
 
 ## 📊 Observability & Monitoring
 
-SecureGuard includes comprehensive observability with OpenTelemetry integration:
+SecureGuard includes comprehensive observability with OpenTelemetry integration and enterprise-grade logging:
+
+### 📋 Production-Ready Logging System ✅
+```bash
+# Log files are automatically created with daily rotation
+./logs/
+├── secureguard-api.log.YYYY-MM-DD     # General application logs (JSON format)
+├── security-audit.log.YYYY-MM-DD      # Security events & audit trail  
+└── error.log.YYYY-MM-DD               # Error-only logs for incident response
+```
+
+**Features:**
+- **Daily Log Rotation**: Automatic file rotation prevents disk space issues
+- **Structured JSON Logging**: Machine-readable logs for analysis tools (ELK, Grafana Loki)
+- **Security Audit Trail**: Isolated logging for compliance (logins, API keys, failures)
+- **Multi-Level Streams**: Separate error logs for focused incident response
+- **Non-Blocking I/O**: High-performance logging that won't slow your application
 
 ### Quick Start Telemetry
 ```bash
@@ -83,13 +99,15 @@ docker-compose -f docker-compose.telemetry.yml up -d
 ```
 
 ### Features
+- **File-Based Logging**: Production-ready log files with rotation and structured JSON format
+- **Security Audit Logging**: Complete audit trail for login attempts, API key operations, and security events
 - **Distributed Tracing**: End-to-end request tracing across services
 - **Metrics Collection**: API performance, agent status, database queries
 - **Frontend Monitoring**: User interactions, performance metrics, error tracking
 - **Real-time Dashboards**: Pre-configured Grafana dashboards
 - **Alert Management**: Configurable alerts for system issues
 
-See [Telemetry & Observability Guide](docs/Telemetry_Observability_Guide.md) for detailed setup and usage.
+See [Logging & Monitoring Guide](docs/Logging_Monitoring_Guide.md) and [Telemetry & Observability Guide](docs/Telemetry_Observability_Guide.md) for detailed setup and usage.
 
 ## 📁 Project Structure
 
@@ -101,6 +119,7 @@ secure_guard/
 │   │   │   ├── handlers/    # HTTP request handlers  
 │   │   │   ├── services/    # Business logic layer
 │   │   │   ├── middleware/  # Authentication middleware
+│   │   │   ├── telemetry.rs # Enhanced logging and monitoring
 │   │   │   └── routes.rs    # API route definitions
 │   │   └── Cargo.toml
 │   └── secureguard-shared/  # Shared types and models
@@ -108,6 +127,11 @@ secure_guard/
 │       │   ├── models.rs    # Data models
 │       │   └── errors.rs    # Error types
 │       └── Cargo.toml
+├── logs/                    # Production log files (auto-created, daily rotation)
+│   ├── README.md           # Logging system documentation
+│   ├── secureguard-api.log.* # General application logs (JSON)
+│   ├── security-audit.log.* # Security audit trail
+│   └── error.log.*         # Error-only logs for incidents
 ├── migrations/              # Database migrations
 ├── agent-deployment/       # Ready-to-deploy agent package
 │   ├── secureguard-agent.exe # Compiled Windows agent

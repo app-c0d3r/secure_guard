@@ -3,6 +3,7 @@ use chrono::{Duration, Utc};
 use secureguard_shared::{CreateUserRequest, Result, SecureGuardError, User};
 use serde_json::Value;
 use sqlx::PgPool;
+use tracing;
 use uuid::Uuid;
 
 pub struct UserService {
@@ -93,6 +94,18 @@ impl UserService {
             // Check if account is locked
             if let Some(locked_until) = row.account_locked_until {
                 if locked_until > now {
+                    tracing::warn!(
+                        target: "secureguard_api",
+                        security = "login_attempt",
+                        audit = "account_locked_login_attempt",
+                        event = "login_attempt_blocked",
+                        username = %username,
+                        user_id = %row.user_id,
+                        locked_until = %locked_until.format("%Y-%m-%d %H:%M:%S UTC"),
+                        failed_attempts = row.failed_login_attempts.unwrap_or(0),
+                        status = "blocked",
+                        "Login attempt blocked - account temporarily locked"
+                    );
                     return Err(SecureGuardError::ValidationError(
                         "Account is temporarily locked due to too many failed login attempts"
                             .to_string(),
@@ -111,6 +124,18 @@ impl UserService {
                     .await
                     .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
+                tracing::info!(
+                    target: "secureguard_api",
+                    security = "login_attempt",
+                    audit = "successful_login",
+                    event = "login_success",
+                    username = %username,
+                    user_id = %row.user_id,
+                    email = %row.email,
+                    status = "success",
+                    "User logged in successfully"
+                );
+
                 return Ok(Some(User {
                     user_id: row.user_id,
                     username: row.username,
@@ -125,7 +150,31 @@ impl UserService {
                     .execute(&self.pool)
                     .await
                     .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+                tracing::warn!(
+                    target: "secureguard_api",
+                    security = "login_attempt",
+                    audit = "failed_login",
+                    event = "login_failed",
+                    username = %username,
+                    user_id = %row.user_id,
+                    reason = "invalid_password",
+                    failed_attempts = row.failed_login_attempts.unwrap_or(0) + 1,
+                    status = "failed",
+                    "Login attempt failed - invalid password"
+                );
             }
+        } else {
+            tracing::warn!(
+                target: "secureguard_api",
+                security = "login_attempt",
+                audit = "failed_login",
+                event = "login_failed",
+                username = %username,
+                reason = "user_not_found",
+                status = "failed",
+                "Login attempt failed - user not found or inactive"
+            );
         }
 
         Ok(None)

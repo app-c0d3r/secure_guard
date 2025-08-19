@@ -4,6 +4,7 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use secureguard_shared::{Result, SecureGuardError};
 use serde::{Deserialize, Serialize};
+use tracing;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -44,9 +45,30 @@ impl AuthService {
             PasswordHash::new(hash).map_err(|e| SecureGuardError::InternalError(e.to_string()))?;
 
         let argon2 = Argon2::default();
-        Ok(argon2
+        let is_valid = argon2
             .verify_password(password.as_bytes(), &parsed_hash)
-            .is_ok())
+            .is_ok();
+
+        // Security audit logging
+        if is_valid {
+            tracing::info!(
+                target: "secureguard_api",
+                security = "password_verification",
+                event = "password_verified",
+                status = "success",
+                "Password verification successful"
+            );
+        } else {
+            tracing::warn!(
+                target: "secureguard_api", 
+                security = "password_verification",
+                event = "password_verification_failed",
+                status = "failed",
+                "Password verification failed - invalid password"
+            );
+        }
+
+        Ok(is_valid)
     }
 
     pub fn generate_token(&self, user_id: Uuid) -> Result<String> {
@@ -59,12 +81,36 @@ impl AuthService {
             iat: now.timestamp(),
         };
 
-        encode(
+        match encode(
             &Header::default(),
             &claims,
             &EncodingKey::from_secret(self.jwt_secret.as_ref()),
-        )
-        .map_err(|e| SecureGuardError::InternalError(e.to_string()))
+        ) {
+            Ok(token) => {
+                tracing::info!(
+                    target: "secureguard_api",
+                    security = "token_generation",
+                    event = "token_generated",
+                    user_id = %user_id,
+                    expires_at = %exp.format("%Y-%m-%d %H:%M:%S UTC"),
+                    status = "success",
+                    "JWT token generated successfully"
+                );
+                Ok(token)
+            }
+            Err(e) => {
+                tracing::error!(
+                    target: "secureguard_api",
+                    security = "token_generation",
+                    event = "token_generation_failed",
+                    user_id = %user_id,
+                    error = %e,
+                    status = "failed",
+                    "JWT token generation failed"
+                );
+                Err(SecureGuardError::InternalError(e.to_string()))
+            }
+        }
     }
 
     pub fn verify_token(&self, token: &str) -> Result<Claims> {

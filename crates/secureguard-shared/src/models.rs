@@ -29,7 +29,7 @@ pub struct Agent {
     pub registered_via_token_id: Option<Uuid>, // Track which token was used
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "varchar", rename_all = "lowercase")]
 pub enum AgentStatus {
     #[serde(rename = "online")]
@@ -172,4 +172,45 @@ pub struct RegisterAgentWithTokenRequest {
     pub hardware_fingerprint: String,
     pub os_info: serde_json::Value,
     pub version: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UserRole {
+    SystemAdmin,
+    SecurityAnalyst,
+    Admin,
+    Manager,
+    PowerUser,
+    User,
+    ReadOnly,
+    Guest,
+}
+
+impl UserRole {
+    pub fn from_slug(slug: &str) -> Option<Self> {
+        match slug {
+            "system_admin" => Some(UserRole::SystemAdmin),
+            "security_analyst" => Some(UserRole::SecurityAnalyst),
+            "admin" => Some(UserRole::Admin),
+            "manager" => Some(UserRole::Manager),
+            "power_user" => Some(UserRole::PowerUser),
+            "user" => Some(UserRole::User),
+            "read_only" => Some(UserRole::ReadOnly),
+            "guest" => Some(UserRole::Guest),
+            _ => None,
+        }
+    }
+
+    pub fn to_slug(&self) -> &'static str {
+        match self {
+            UserRole::SystemAdmin => "system_admin",
+            UserRole::SecurityAnalyst => "security_analyst",
+            UserRole::Admin => "admin",
+            UserRole::Manager => "manager",
+            UserRole::PowerUser => "power_user",
+            UserRole::User => "user",
+            UserRole::ReadOnly => "read_only",
+            UserRole::Guest => "guest",
+        }
+    }
 }

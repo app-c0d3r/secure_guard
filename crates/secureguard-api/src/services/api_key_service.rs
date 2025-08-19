@@ -6,6 +6,7 @@ use secureguard_shared::{
     CreateRegistrationTokenResponse, RegistrationToken, Result, SecureGuardError,
 };
 use sqlx::PgPool;
+use tracing;
 use uuid::Uuid;
 
 pub struct ApiKeyService {
@@ -42,7 +43,7 @@ impl ApiKeyService {
 
         // Generate a secure API key: sg_{prefix}_{random}
         let key_id = Uuid::new_v4();
-        let prefix = format!("sg_{}", &key_id.to_string()[0..8]);
+        let prefix = format!("sg_{}", &key_id.to_string().replace("-", "")[0..6]);
         let random_suffix = uuid::Uuid::new_v4().to_string().replace("-", "")[0..20].to_string();
         let full_api_key = format!("{}_{}", prefix, random_suffix);
 
@@ -85,6 +86,20 @@ impl ApiKeyService {
             tracing::warn!("Failed to update API key count for user {}: {}", user_id, e);
         }
 
+        tracing::info!(
+            target: "secureguard_api",
+            security = "api_key_management",
+            audit = "api_key_created",
+            event = "api_key_created",
+            user_id = %user_id,
+            key_id = %api_key.key_id,
+            key_name = %api_key.key_name,
+            key_prefix = %api_key.key_prefix,
+            expires_at = ?api_key.expires_at,
+            status = "success",
+            "API key created successfully"
+        );
+
         Ok(CreateApiKeyResponse {
             key_id: api_key.key_id,
             api_key: full_api_key, // Return full key only once
@@ -119,12 +134,39 @@ impl ApiKeyService {
         .await
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
-        let stored_key = stored_key
-            .ok_or_else(|| SecureGuardError::AuthenticationError("Invalid API key".to_string()))?;
+        let stored_key = match stored_key {
+            Some(key) => key,
+            None => {
+                tracing::warn!(
+                    target: "secureguard_api",
+                    security = "api_key_validation",
+                    audit = "invalid_api_key_attempt",
+                    event = "api_key_validation_failed",
+                    key_prefix = %prefix,
+                    reason = "key_not_found",
+                    status = "failed",
+                    "API key validation failed - key not found or inactive"
+                );
+                return Err(SecureGuardError::AuthenticationError("Invalid API key".to_string()));
+            }
+        };
 
         // Check if key is expired
         if let Some(expires_at) = stored_key.expires_at {
             if Utc::now() > expires_at {
+                tracing::warn!(
+                    target: "secureguard_api",
+                    security = "api_key_validation",
+                    audit = "expired_api_key_attempt",
+                    event = "api_key_validation_failed",
+                    key_id = %stored_key.key_id,
+                    user_id = %stored_key.user_id,
+                    key_prefix = %prefix,
+                    expired_at = %expires_at.format("%Y-%m-%d %H:%M:%S UTC"),
+                    reason = "key_expired",
+                    status = "failed",
+                    "API key validation failed - key expired"
+                );
                 return Err(SecureGuardError::AuthenticationError(
                     "API key has expired".to_string(),
                 ));
@@ -133,10 +175,33 @@ impl ApiKeyService {
 
         // Verify the API key
         let is_valid = verify(api_key, &stored_key.key_hash).map_err(|e| {
+            tracing::error!(
+                target: "secureguard_api",
+                security = "api_key_validation",
+                event = "api_key_verification_error",
+                key_id = %stored_key.key_id,
+                user_id = %stored_key.user_id,
+                error = %e,
+                status = "error",
+                "API key verification error"
+            );
             SecureGuardError::InternalError(format!("Failed to verify API key: {}", e))
         })?;
 
         if !is_valid {
+            tracing::warn!(
+                target: "secureguard_api",
+                security = "api_key_validation",
+                audit = "invalid_api_key_attempt",
+                event = "api_key_validation_failed",
+                key_id = %stored_key.key_id,
+                user_id = %stored_key.user_id,
+                key_prefix = %prefix,
+                reason = "invalid_key_hash",
+                usage_count = stored_key.usage_count,
+                status = "failed",
+                "API key validation failed - invalid key hash"
+            );
             return Err(SecureGuardError::AuthenticationError(
                 "Invalid API key".to_string(),
             ));
@@ -152,6 +217,19 @@ impl ApiKeyService {
         .execute(&self.pool)
         .await
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+        tracing::info!(
+            target: "secureguard_api",
+            security = "api_key_validation",
+            audit = "successful_api_key_validation",
+            event = "api_key_validated",
+            key_id = %stored_key.key_id,
+            user_id = %stored_key.user_id,
+            key_prefix = %prefix,
+            usage_count = stored_key.usage_count + 1,
+            status = "success",
+            "API key validated successfully"
+        );
 
         Ok((stored_key.user_id, stored_key.key_id))
     }

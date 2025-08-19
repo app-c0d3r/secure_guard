@@ -1,38 +1,77 @@
-# SecureGuard Documentation
+# SecureGuard Documentation Index
 
-This directory contains all project documentation for SecureGuard, a cloud-native cybersecurity platform.
+Welcome to the SecureGuard documentation hub. This index provides organized access to all documentation by category and purpose.
 
 ## 📁 Documentation Structure
 
-### Setup & Getting Started
-- **[Development_Setup_Guide.md](Development_Setup_Guide.md)** - Complete development environment setup with telemetry
-- **[manual_db_setup.md](manual_db_setup.md)** - Manual database setup instructions
-- **[Production_Deployment_Checklist.md](Production_Deployment_Checklist.md)** - Complete production deployment guide with observability
-- **[NEXT_STEPS.md](NEXT_STEPS.md)** - Immediate next steps for development
-- **[Telemetry_Quick_Start.md](Telemetry_Quick_Start.md)** ⭐ - 5-minute telemetry setup guide
-- **[Telemetry_Observability_Guide.md](Telemetry_Observability_Guide.md)** - Comprehensive OpenTelemetry documentation
+### 🔌 API Documentation (`/api/`)
+- **[API Documentation](api/API_Documentation.md)** - Complete API reference with endpoints, authentication, and examples
+- **[API Key Agent Registration](api/API_Key_Agent_Registration.md)** - API key-based agent registration guide
 
-### Project Status & Planning  
-- **[Implementation_Status.md](Implementation_Status.md)** - Current implementation progress
-- **[STATUS_SUMMARY.md](STATUS_SUMMARY.md)** - Critical status and blockers
-- **[Roadmap.md](Roadmap.md)** - Development phases and milestones
+### 🚀 Deployment (`/deployment/`)
+- **[Production Deployment Checklist](deployment/Production_Deployment_Checklist.md)** - Comprehensive production deployment verification
+- **[Agent Deployment Guide](deployment/Agent_Deployment_Guide.md)** - Agent installation and deployment procedures
+- **[Kamal Deployment Guide](deployment/Kamal_Deployment_Guide.md)** - Docker-based deployment with Kamal
 
-### Architecture & Design
-- **[en_SecureGuard Technical & Implementation Guide.md](en_SecureGuard%20Technical%20&%20Implementation%20Guide.md)** - Complete technical architecture
-- **[Database_Schema_Documentation.md](Database_Schema_Documentation.md)** - Complete database schema and migration documentation
-- **[API_Documentation.md](API_Documentation.md)** - Complete REST API documentation with telemetry endpoints
-- **[Phase2_Architecture.md](Phase2_Architecture.md)** - Phase 2 MVP features and design
-- **[de_SecureGuard Technical & Implementation Guide.md](de_SecureGuard%20Technical%20&%20Implementation%20Guide.md)** - German technical guide
+### 💻 Development (`/development/`)
+- **[Development Setup Guide](development/Development_Setup_Guide.md)** - Complete development environment setup
+- **[Database Schema Documentation](development/Database_Schema_Documentation.md)** - Database structure and relationships
 
-### Security Implementation (NEW)
-- **[Password_Security_System.md](Password_Security_System.md)** - Comprehensive password security system documentation
-- **[Frontend_Security_Guide.md](Frontend_Security_Guide.md)** - Frontend security implementation and monitoring
-- **[User_Guide_Password_Security.md](User_Guide_Password_Security.md)** - User guide for password requirements and security
-- **[Support_System_Documentation.md](Support_System_Documentation.md)** - Support system and email notifications
-- **[Admin_Interface_Guide.md](Admin_Interface_Guide.md)** - Role-based admin interface documentation
+### 🔒 Security (`/security/`)
+- **[Password Security System](security/Password_Security_System.md)** - Password policies and security implementation
+- **[Frontend Security Guide](security/Frontend_Security_Guide.md)** - Frontend security best practices
+- **[Security Monitoring & Alerting Guide](security/Security_Monitoring_Alerting_Guide.md)** - Security event monitoring and incident response
+- **[User Guide: Password Security](security/User_Guide_Password_Security.md)** - End-user password security guide
 
-### Requirements
-- **[Lastenheft .md](Lastenheft%20.md)** - Project requirements specification
+### 📊 Monitoring & Observability (`/monitoring/`)
+- **[Logging & Monitoring Guide](monitoring/Logging_Monitoring_Guide.md)** - Comprehensive logging system documentation
+- **[Telemetry & Observability Guide](monitoring/Telemetry_Observability_Guide.md)** - OpenTelemetry integration and metrics
+
+### 👨‍💼 Administration (`/admin/`)
+- **[Admin Interface Guide](admin/Admin_Interface_Guide.md)** - Administrative interface documentation
+- **[Role & Permission Management Guide](admin/Role_Permission_Management_Guide.md)** - RBAC system documentation
+- **[Subscription Admin Management Guide](admin/Subscription_Admin_Management_Guide.md)** - Subscription management features
+- **[Admin Area Documentation](admin/Admin_Area_Documentation.md)** - Complete admin functionality overview
+
+### 💼 Business Documentation (`/business/`)
+- **[Subscription Business Model](business/Subscription_Business_Model.md)** - Business model and pricing strategy
+- **[Lastenheft](business/Lastenheft.md)** - Requirements specification (German)
+
+### 🌐 Multi-Language (`/languages/`)
+- **[English Technical Guide](languages/en_SecureGuard_Technical_&_Implementation_Guide.md)** - Complete technical implementation guide
+- **[German Technical Guide](languages/de_SecureGuard_Technical_&_Implementation_Guide.md)** - German technical implementation guide
+
+### 🧪 Testing (`/testing/`)
+- **[Workflow Testing Guide](testing/Workflow_Testing_Guide.md)** - Testing procedures and workflow validation
+
+## 🗂️ Legacy Documentation (Root Level)
+
+The following documents remain in the root `/docs/` folder for historical reference or pending organization:
+
+- **[Agent Implementation Plan](Agent_Implementation_Plan.md)** - Original agent development planning
+- **[Agent Lifecycle Management](Agent_Lifecycle_Management.md)** - Agent management procedures
+- **[Documentation Standards](Documentation_Standards.md)** - Documentation writing guidelines
+- **[NEXT_STEPS.md](NEXT_STEPS.md)** - Development roadmap and next steps
+- **[Phase2_Architecture.md](Phase2_Architecture.md)** - Phase 2 architectural planning
+- **[Roadmap.md](Roadmap.md)** - Project development roadmap
+- **[Strategic_Next_Steps.md](Strategic_Next_Steps.md)** - Strategic planning document
+- **[Support_System_Documentation.md](Support_System_Documentation.md)** - Support system implementation
+
+## 🚀 Quick Start Guides
+
+### For Developers
+1. Start with [Development Setup Guide](development/Development_Setup_Guide.md)
+2. Review [API Documentation](api/API_Documentation.md)
+3. Follow [Testing Guide](testing/Workflow_Testing_Guide.md)
+
+### For Administrators
+1. Review [Production Deployment Checklist](deployment/Production_Deployment_Checklist.md)
+2. Configure [Security Monitoring](security/Security_Monitoring_Alerting_Guide.md)
+3. Set up [Logging & Monitoring](monitoring/Logging_Monitoring_Guide.md)
+
+### For End Users
+1. Read [User Guide: Password Security](security/User_Guide_Password_Security.md)
+2. Contact administrators for account setup
 
 ## 🏗 Architecture Overview
 
@@ -61,6 +100,12 @@ SecureGuard is built as a modern, cloud-native cybersecurity platform:
                        └──────────────────┘
 ```
 
+## 📈 Documentation Status
+
+- ✅ **Production Ready**: API, Deployment, Security, Monitoring documentation
+- 🔄 **Active Development**: Testing, Admin interface guides
+- 📋 **Planning**: Phase 2 architecture, roadmap documents
+
 ## 🎯 Current Status
 
 **Phase 1**: ✅ **100% Complete**
@@ -75,84 +120,14 @@ SecureGuard is built as a modern, cloud-native cybersecurity platform:
 - Support system with email notifications
 - Role-based admin interface
 - Real-time security monitoring
+- Comprehensive logging system
 
-**Blocker**: Visual Studio C++ Build Tools installation required for Windows compilation
+## 🔄 Recent Updates
 
-## 🚀 Quick Start
-
-1. **Read**: [Development_Setup_Guide.md](Development_Setup_Guide.md)
-2. **Install**: Visual Studio C++ Build Tools
-3. **Run**: `./scripts/setup_dev.sh`
-4. **Test**: `cargo test`
-5. **Start**: `cargo run -p secureguard-api`
-
-## 📋 Documentation Guidelines
-
-When adding new documentation:
-
-### File Naming Convention
-- Use descriptive names with underscores: `Feature_Implementation_Guide.md`
-- Include version/date for specifications: `API_Specification_v2.0.md`
-- Use prefixes for organization: `Setup_`, `API_`, `Architecture_`
-
-### Required Sections
-All documentation should include:
-```markdown
-# Title
-
-**Document Version:** X.X  
-**Last Updated:** Date  
-**Status:** Draft/Ready/Archived  
-**Author:** Name
-
-## Overview
-Brief description
-
-## Content
-Main documentation
-
----
-**Next Update:** When this will be revised
-```
-
-### Documentation Types
-
-**Setup Guides**
-- Environment setup
-- Installation instructions  
-- Configuration guides
-
-**Architecture Documents**
-- System design
-- Component architecture
-- Integration patterns
-
-**API Documentation**
-- Endpoint specifications
-- Request/response formats
-- Authentication flows
-
-**User Guides** 
-- Feature walkthroughs
-- Best practices
-- Troubleshooting
-
-**Development Notes**
-- Implementation decisions
-- Technical debt
-- Future improvements
-
-## 🔄 Documentation Maintenance
-
-- **Review Schedule**: Monthly review of all docs
-- **Update Trigger**: Any architecture or API changes
-- **Version Control**: Track major changes in git
-- **Stakeholder Review**: Technical lead approval for architecture docs
-
----
-
-**Last Updated**: August 19, 2025  
-**Maintained By**: SecureGuard Development Team
+- **2024-08-19**: Major documentation reorganization with categorical folder structure
+- **2024-08-19**: Added comprehensive logging and security monitoring guides
+- **2024-08-19**: Updated deployment checklists with production-ready procedures
+- **2024-08-19**: Implemented structured project cleanup and organization
 
 ## 📊 Recent Documentation Updates (August 2025)
 
@@ -163,6 +138,13 @@ Main documentation
 - **Infrastructure Setup**: Docker Compose configuration for complete telemetry stack
 - **Production Guidelines**: Sampling strategies, resource limits, and security configuration
 
+### Comprehensive Logging System (NEW - August 19)
+- **Multi-Stream Logging**: General, security audit, and error-only log streams
+- **Daily Rotation**: Automatic file rotation with structured JSON format
+- **Security Compliance**: Complete audit trail for SOC 2, ISO 27001 compliance
+- **Performance Monitoring**: Non-blocking I/O with minimal system impact
+- **Integration Ready**: ELK stack, Grafana Loki, and alerting system integration
+
 ### Password Security System (NEW)
 - **Comprehensive Password Policies**: 12+ character minimum, complexity requirements, history tracking
 - **Account Lockout Protection**: 5 failed attempts trigger 30-minute lockout with progressive duration
@@ -170,26 +152,8 @@ Main documentation
 - **Real-time Validation**: Live password policy compliance checking with visual feedback
 - **Database-level Enforcement**: SQL functions for password validation and lockout handling
 
-### Enhanced API Documentation
-- **New Authentication Endpoints**: Password change, policy retrieval, requirement checking
-- **Security Error Codes**: Comprehensive error handling for password security violations
-- **Complete API Reference**: All endpoints documented with request/response examples
-- **Rate Limiting Documentation**: Security protection and usage guidelines
+---
 
-### Production Deployment Guide
-- **Security Verification Checklist**: Step-by-step security validation procedures
-- **Password System Testing**: Comprehensive testing scenarios for all security features
-- **Monitoring Setup**: Security metrics, alerting, and incident response procedures
-- **Compliance Documentation**: Requirements for audit trails and security policies
-
-### User Experience Documentation
-- **Password Change Workflow**: Complete user guide for password requirements and changes
-- **Security Best Practices**: Guidelines for creating and managing secure passwords
-- **Troubleshooting Guide**: Solutions for common password and authentication issues
-- **Compliance Guidelines**: Industry standards alignment and organizational requirements
-
-### Database Schema Documentation
-- **Migration 008 Details**: Complete password security system implementation
-- **Security Functions**: Database-level password validation and lockout management
-- **Performance Optimization**: Indexes and monitoring for security features
-- **Maintenance Procedures**: Regular security maintenance and administrative tasks
+**Last Updated**: August 19, 2025  
+**Version**: 2.0  
+**Maintained by**: SecureGuard Development Team
