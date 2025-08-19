@@ -1,21 +1,18 @@
+use crate::{
+    database::Database, middleware::auth::AuthUser, services::threat_service::ThreatService,
+};
 use axum::{
-    extract::{State, Path, Query},
+    extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
-use uuid::Uuid;
-use serde::Deserialize;
 use secureguard_shared::{
-    SecurityEvent, ThreatAlert, DetectionRule, AgentCommand,
-    CreateSecurityEventRequest, CreateAlertRequest, UpdateAlertRequest, CreateCommandRequest,
-    AlertStatus, CommandStatus, Severity,
-    SecureGuardError
+    AgentCommand, AlertStatus, CommandStatus, CreateAlertRequest, CreateCommandRequest,
+    CreateSecurityEventRequest, DetectionRule, SecureGuardError, SecurityEvent, Severity,
+    ThreatAlert, UpdateAlertRequest,
 };
-use crate::{
-    database::Database,
-    services::threat_service::ThreatService,
-    middleware::auth::AuthUser,
-};
+use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct EventsQuery {
@@ -56,8 +53,10 @@ pub async fn create_security_event(
     Json(request): Json<CreateSecurityEventRequest>,
 ) -> Result<(StatusCode, Json<SecurityEvent>), (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
-    let event = threat_service.create_security_event(agent_id, request).await
+
+    let event = threat_service
+        .create_security_event(agent_id, request)
+        .await
         .map_err(|e| handle_error(e))?;
 
     Ok((StatusCode::CREATED, Json(event)))
@@ -69,8 +68,10 @@ pub async fn get_security_events(
     Query(params): Query<EventsQuery>,
 ) -> Result<Json<Vec<SecurityEvent>>, (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
-    let events = threat_service.get_security_events(params.agent_id, params.limit).await
+
+    let events = threat_service
+        .get_security_events(params.agent_id, params.limit)
+        .await
         .map_err(|e| handle_error(e))?;
 
     Ok(Json(events))
@@ -83,8 +84,10 @@ pub async fn create_detection_rule(
     Json(rule): Json<DetectionRule>,
 ) -> Result<(StatusCode, Json<DetectionRule>), (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
-    let created_rule = threat_service.create_detection_rule(rule, user.user_id).await
+
+    let created_rule = threat_service
+        .create_detection_rule(rule, user.user_id)
+        .await
         .map_err(|e| handle_error(e))?;
 
     Ok((StatusCode::CREATED, Json(created_rule)))
@@ -96,8 +99,10 @@ pub async fn get_detection_rules(
     Query(params): Query<EnabledOnlyQuery>,
 ) -> Result<Json<Vec<DetectionRule>>, (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
-    let rules = threat_service.get_detection_rules(params.enabled_only.unwrap_or(false)).await
+
+    let rules = threat_service
+        .get_detection_rules(params.enabled_only.unwrap_or(false))
+        .await
         .map_err(|e| handle_error(e))?;
 
     Ok(Json(rules))
@@ -116,8 +121,10 @@ pub async fn create_alert(
     Json(request): Json<CreateAlertRequest>,
 ) -> Result<(StatusCode, Json<ThreatAlert>), (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
-    let alert = threat_service.create_alert(agent_id, request).await
+
+    let alert = threat_service
+        .create_alert(agent_id, request)
+        .await
         .map_err(|e| handle_error(e))?;
 
     Ok((StatusCode::CREATED, Json(alert)))
@@ -130,8 +137,10 @@ pub async fn update_alert(
     Json(request): Json<UpdateAlertRequest>,
 ) -> Result<Json<ThreatAlert>, (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
-    let alert = threat_service.update_alert(alert_id, request).await
+
+    let alert = threat_service
+        .update_alert(alert_id, request)
+        .await
         .map_err(|e| handle_error(e))?;
 
     Ok(Json(alert))
@@ -143,7 +152,7 @@ pub async fn get_alerts(
     Query(params): Query<AlertsQuery>,
 ) -> Result<Json<Vec<ThreatAlert>>, (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
+
     let status = params.status.and_then(|s| match s.as_str() {
         "open" => Some(AlertStatus::Open),
         "investigating" => Some(AlertStatus::Investigating),
@@ -151,8 +160,10 @@ pub async fn get_alerts(
         "false_positive" => Some(AlertStatus::FalsePositive),
         _ => None,
     });
-    
-    let alerts = threat_service.get_alerts(params.agent_id, status).await
+
+    let alerts = threat_service
+        .get_alerts(params.agent_id, status)
+        .await
         .map_err(|e| handle_error(e))?;
 
     Ok(Json(alerts))
@@ -166,13 +177,15 @@ pub async fn create_agent_command(
     Json(request): Json<CreateCommandRequest>,
 ) -> Result<(StatusCode, Json<AgentCommand>), (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
-    let command = threat_service.create_command(agent_id, user.user_id, request).await
+
+    let command = threat_service
+        .create_command(agent_id, user.user_id, request)
+        .await
         .map_err(|e| handle_error(e))?;
 
     // TODO: Send command to agent via WebSocket
     // This would integrate with the WebSocket system to actually send the command
-    
+
     Ok((StatusCode::CREATED, Json(command)))
 }
 
@@ -182,11 +195,11 @@ pub async fn get_agent_commands(
     Path(agent_id): Path<Uuid>,
 ) -> Result<Json<Vec<AgentCommand>>, (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
+
     // Get commands for specific agent
     // TODO: Implement get_commands_for_agent method in ThreatService
     let commands: Vec<AgentCommand> = vec![]; // Placeholder
-    
+
     Ok(Json(commands))
 }
 
@@ -196,12 +209,10 @@ pub async fn update_command_status(
     Json(status_update): Json<CommandStatusUpdate>,
 ) -> Result<Json<AgentCommand>, (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
-    let command = threat_service.update_command_status(
-        command_id,
-        status_update.status,
-        status_update.result,
-    ).await
+
+    let command = threat_service
+        .update_command_status(command_id, status_update.status, status_update.result)
+        .await
         .map_err(|e| handle_error(e))?;
 
     Ok(Json(command))
@@ -219,25 +230,36 @@ pub async fn get_threat_summary(
     AuthUser(user): AuthUser,
 ) -> Result<Json<ThreatSummary>, (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
+
     // Get recent alerts and events for summary
-    let recent_alerts = threat_service.get_alerts(None, None).await
+    let recent_alerts = threat_service
+        .get_alerts(None, None)
+        .await
         .map_err(|e| handle_error(e))?;
-    
-    let recent_events = threat_service.get_security_events(None, Some(100)).await
+
+    let recent_events = threat_service
+        .get_security_events(None, Some(100))
+        .await
         .map_err(|e| handle_error(e))?;
-    
+
     let summary = ThreatSummary {
         total_alerts: recent_alerts.len(),
-        open_alerts: recent_alerts.iter().filter(|a| matches!(a.status, AlertStatus::Open)).count(),
-        critical_alerts: recent_alerts.iter().filter(|a| matches!(a.severity, Severity::Critical)).count(),
-        total_events_today: recent_events.iter()
+        open_alerts: recent_alerts
+            .iter()
+            .filter(|a| matches!(a.status, AlertStatus::Open))
+            .count(),
+        critical_alerts: recent_alerts
+            .iter()
+            .filter(|a| matches!(a.severity, Severity::Critical))
+            .count(),
+        total_events_today: recent_events
+            .iter()
             .filter(|e| e.occurred_at.date_naive() == chrono::Utc::now().date_naive())
             .count(),
         top_threat_types: get_top_threat_types(&recent_alerts),
         agent_threat_distribution: get_agent_threat_distribution(&recent_alerts),
     };
-    
+
     Ok(Json(summary))
 }
 
@@ -265,16 +287,17 @@ pub struct AgentThreatCount {
 
 fn get_top_threat_types(alerts: &[ThreatAlert]) -> Vec<ThreatTypeCount> {
     use std::collections::HashMap;
-    
+
     let mut type_counts: HashMap<String, usize> = HashMap::new();
     for alert in alerts {
         *type_counts.entry(alert.alert_type.clone()).or_insert(0) += 1;
     }
-    
-    let mut counts: Vec<_> = type_counts.into_iter()
+
+    let mut counts: Vec<_> = type_counts
+        .into_iter()
         .map(|(threat_type, count)| ThreatTypeCount { threat_type, count })
         .collect();
-    
+
     counts.sort_by(|a, b| b.count.cmp(&a.count));
     counts.truncate(5); // Top 5
     counts
@@ -282,16 +305,20 @@ fn get_top_threat_types(alerts: &[ThreatAlert]) -> Vec<ThreatTypeCount> {
 
 fn get_agent_threat_distribution(alerts: &[ThreatAlert]) -> Vec<AgentThreatCount> {
     use std::collections::HashMap;
-    
+
     let mut agent_counts: HashMap<Uuid, usize> = HashMap::new();
     for alert in alerts {
         *agent_counts.entry(alert.agent_id).or_insert(0) += 1;
     }
-    
-    let mut counts: Vec<_> = agent_counts.into_iter()
-        .map(|(agent_id, threat_count)| AgentThreatCount { agent_id, threat_count })
+
+    let mut counts: Vec<_> = agent_counts
+        .into_iter()
+        .map(|(agent_id, threat_count)| AgentThreatCount {
+            agent_id,
+            threat_count,
+        })
         .collect();
-    
+
     counts.sort_by(|a, b| b.threat_count.cmp(&a.threat_count));
     counts.truncate(10); // Top 10
     counts
@@ -306,10 +333,12 @@ pub async fn analyze_threat_patterns(
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
     let hours = query.hours.unwrap_or(24);
-    
-    let analysis = threat_service.analyze_threat_patterns(agent_id, hours).await
+
+    let analysis = threat_service
+        .analyze_threat_patterns(agent_id, hours)
+        .await
         .map_err(|e| handle_error(e))?;
-    
+
     Ok(Json(analysis))
 }
 
@@ -320,10 +349,12 @@ pub async fn get_threat_timeline(
 ) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
     let hours = query.hours.unwrap_or(24);
-    
-    let timeline = threat_service.get_threat_timeline(query.agent_id, hours).await
+
+    let timeline = threat_service
+        .get_threat_timeline(query.agent_id, hours)
+        .await
         .map_err(|e| handle_error(e))?;
-    
+
     Ok(Json(timeline))
 }
 
@@ -335,10 +366,12 @@ pub async fn get_top_threats(
     let threat_service = ThreatService::new(db.pool().clone());
     let hours = query.hours.unwrap_or(24);
     let limit = query.limit.unwrap_or(10);
-    
-    let top_threats = threat_service.get_top_threats(hours, limit).await
+
+    let top_threats = threat_service
+        .get_top_threats(hours, limit)
+        .await
         .map_err(|e| handle_error(e))?;
-    
+
     Ok(Json(top_threats))
 }
 
@@ -348,10 +381,12 @@ pub async fn bulk_create_events(
     Json(events): Json<Vec<(Uuid, CreateSecurityEventRequest)>>,
 ) -> Result<(StatusCode, Json<Vec<SecurityEvent>>), (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
-    let processed_events = threat_service.bulk_process_events(events).await
+
+    let processed_events = threat_service
+        .bulk_process_events(events)
+        .await
         .map_err(|e| handle_error(e))?;
-    
+
     Ok((StatusCode::CREATED, Json(processed_events)))
 }
 
@@ -362,10 +397,12 @@ pub async fn create_command(
     Json(request): Json<CreateCommandRequest>,
 ) -> Result<(StatusCode, Json<AgentCommand>), (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
-    let command = threat_service.create_command(agent_id, user.user_id, request).await
+
+    let command = threat_service
+        .create_command(agent_id, user.user_id, request)
+        .await
         .map_err(|e| handle_error(e))?;
-    
+
     Ok((StatusCode::CREATED, Json(command)))
 }
 
@@ -375,10 +412,12 @@ pub async fn get_command(
     Path(command_id): Path<Uuid>,
 ) -> Result<Json<Option<AgentCommand>>, (StatusCode, Json<serde_json::Value>)> {
     let threat_service = ThreatService::new(db.pool().clone());
-    
-    let command = threat_service.get_command_by_id(command_id).await
+
+    let command = threat_service
+        .get_command_by_id(command_id)
+        .await
         .map_err(|e| handle_error(e))?;
-    
+
     Ok(Json(command))
 }
 
@@ -386,8 +425,14 @@ fn handle_error(error: SecureGuardError) -> (StatusCode, Json<serde_json::Value>
     let (status, message) = match error {
         SecureGuardError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg),
         SecureGuardError::AgentNotFound => (StatusCode::NOT_FOUND, "Agent not found".to_string()),
-        SecureGuardError::DatabaseError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string()),
-        _ => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string()),
+        SecureGuardError::DatabaseError(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Database error".to_string(),
+        ),
+        _ => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal server error".to_string(),
+        ),
     };
 
     (status, Json(serde_json::json!({ "error": message })))

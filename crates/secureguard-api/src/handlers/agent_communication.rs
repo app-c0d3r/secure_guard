@@ -1,23 +1,24 @@
 use axum::{
-    extract::{State, Path, Query, WebSocketUpgrade, ws::WebSocket},
+    extract::{ws::WebSocket, Path, Query, State, WebSocketUpgrade},
     http::StatusCode,
     response::Response,
     Json,
 };
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use futures_util::{SinkExt, StreamExt};
-use tracing::{info, warn, error, debug};
+use serde::{Deserialize, Serialize};
+use tracing::{debug, error, info, warn};
+use uuid::Uuid;
 
 use crate::{
     database::Database,
-    services::agent_communication::{AgentCommunicationService, CommunicationStats, AgentConnection},
     middleware::auth::AuthUser,
+    services::agent_communication::{
+        AgentCommunicationService, AgentConnection, CommunicationStats,
+    },
 };
 use secureguard_shared::{
-    Agent, CreateAgentRequest, AgentHeartbeat, CreateSecurityEventRequest,
-    AgentCommand, CommandStatus, AgentMessage, AgentStatus,
-    SecureGuardError
+    Agent, AgentCommand, AgentHeartbeat, AgentMessage, AgentStatus, CommandStatus,
+    CreateAgentRequest, CreateSecurityEventRequest, SecureGuardError,
 };
 
 #[derive(Debug, Deserialize)]
@@ -91,8 +92,11 @@ pub async fn register_agent_enhanced(
     ws: WebSocketUpgrade,
     Json(request): Json<CreateAgentRequest>,
 ) -> Response {
-    info!("Enhanced agent registration request from: {}", request.hostname);
-    
+    info!(
+        "Enhanced agent registration request from: {}",
+        request.hostname
+    );
+
     ws.on_upgrade(move |socket| handle_agent_websocket(socket, db, request))
 }
 
@@ -103,12 +107,14 @@ pub async fn handle_agent_websocket(
 ) {
     let connection_id = Uuid::new_v4();
     let (mut sender, mut receiver) = websocket.split();
-    
+
     // In a real implementation, we'd get the communication service from app state
     // For now, we'll simulate the registration process
-    info!("Agent WebSocket connection established: {} ({})", 
-          registration_request.agent_name, connection_id);
-    
+    info!(
+        "Agent WebSocket connection established: {} ({})",
+        registration_request.agent_name, connection_id
+    );
+
     // Send registration confirmation
     let confirmation = AgentMessage::RegistrationConfirmed {
         agent_id: Uuid::new_v4(),
@@ -118,14 +124,14 @@ pub async fn handle_agent_websocket(
             "encryption_level": "AES256"
         }),
     };
-    
+
     if let Ok(message) = serde_json::to_string(&confirmation) {
         if let Err(e) = sender.send(axum::extract::ws::Message::Text(message)).await {
             error!("Failed to send registration confirmation: {}", e);
             return;
         }
     }
-    
+
     // Handle incoming messages from agent
     while let Some(msg) = receiver.next().await {
         match msg {
@@ -155,7 +161,7 @@ pub async fn handle_agent_websocket(
             _ => {}
         }
     }
-    
+
     info!("Agent WebSocket connection terminated: {}", connection_id);
 }
 
@@ -164,41 +170,57 @@ async fn handle_agent_message(
     sender: &mut futures_util::stream::SplitSink<WebSocket, axum::extract::ws::Message>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match message {
-        AgentMessage::Heartbeat { agent_id, status, metrics } => {
+        AgentMessage::Heartbeat {
+            agent_id,
+            status,
+            metrics,
+        } => {
             debug!("Received heartbeat from agent: {}", agent_id);
-            
+
             // Send heartbeat acknowledgment
             let ack = AgentMessage::HeartbeatAck {
                 timestamp: chrono::Utc::now(),
             };
             let response = serde_json::to_string(&ack)?;
-            sender.send(axum::extract::ws::Message::Text(response)).await?;
+            sender
+                .send(axum::extract::ws::Message::Text(response))
+                .await?;
         }
-        
+
         AgentMessage::SecurityEvents { agent_id, events } => {
-            info!("Received {} security events from agent: {}", events.len(), agent_id);
-            
+            info!(
+                "Received {} security events from agent: {}",
+                events.len(),
+                agent_id
+            );
+
             // Process events (in real implementation, this would go through the communication service)
             let ack = AgentMessage::EventsProcessed {
                 processed_count: events.len(),
                 timestamp: chrono::Utc::now(),
             };
             let response = serde_json::to_string(&ack)?;
-            sender.send(axum::extract::ws::Message::Text(response)).await?;
+            sender
+                .send(axum::extract::ws::Message::Text(response))
+                .await?;
         }
-        
-        AgentMessage::CommandResponse { command_id, status, result } => {
+
+        AgentMessage::CommandResponse {
+            command_id,
+            status,
+            result,
+        } => {
             info!("Received command response: {} -> {:?}", command_id, status);
-            
+
             // Process command response
             // In real implementation, this would update the command tracking system
         }
-        
+
         _ => {
             debug!("Received unhandled agent message type");
         }
     }
-    
+
     Ok(())
 }
 
@@ -236,14 +258,17 @@ pub async fn get_agent_status_detailed(
             last_seen: chrono::Utc::now(),
             status: AgentStatus::Online,
             version: "1.0.0".to_string(),
-            capabilities: vec!["file_monitoring".to_string(), "process_monitoring".to_string()],
+            capabilities: vec![
+                "file_monitoring".to_string(),
+                "process_monitoring".to_string(),
+            ],
             pending_commands: vec![],
             metrics_buffer: vec![],
         }),
         pending_commands: 0,
         last_activity: chrono::Utc::now(),
     };
-    
+
     Ok(Json(mock_response))
 }
 
@@ -253,50 +278,66 @@ pub async fn list_agents_with_status(
     Query(query): Query<AgentQuery>,
 ) -> Result<Json<Vec<AgentStatusResponse>>, (StatusCode, Json<serde_json::Value>)> {
     let limit = query.limit.unwrap_or(50);
-    
+
     // Generate mock agent list
-    let agents: Vec<_> = (0..limit.min(10)).map(|i| {
-        let agent_id = Uuid::new_v4();
-        AgentStatusResponse {
-            agent: Agent {
-                agent_id,
-                tenant_id: Uuid::new_v4(),
-                hardware_fingerprint: format!("HW{:09}", 123456789 + i),
-                os_info: serde_json::json!({
-                    "hostname": format!("WIN-DESKTOP-{:03}", i + 1),
-                    "os": "Windows 10 Pro",
-                    "ip_address": format!("192.168.1.{}", 100 + i),
-                    "mac_address": format!("00:11:22:33:44:{:02X}", 55 + i)
-                }),
-                status: if i % 4 == 0 { AgentStatus::Offline } else { AgentStatus::Online },
-                last_heartbeat: Some(chrono::Utc::now() - chrono::Duration::minutes((i * 10) as i64)),
-                version: "1.0.0".to_string(),
-                created_at: chrono::Utc::now() - chrono::Duration::days(i as i64),
-                user_id: Some(Uuid::new_v4()),
-                device_name: Some(format!("WIN-DESKTOP-{:03}", i + 1)),
-                registered_via_key_id: None,
-                registered_via_token_id: None,
-            },
-            connection: if i % 4 != 0 {
-                Some(AgentConnection {
+    let agents: Vec<_> = (0..limit.min(10))
+        .map(|i| {
+            let agent_id = Uuid::new_v4();
+            AgentStatusResponse {
+                agent: Agent {
                     agent_id,
-                    connection_id: Uuid::new_v4(),
-                    last_heartbeat: chrono::Utc::now() - chrono::Duration::minutes((i * 2) as i64),
-                    last_seen: chrono::Utc::now() - chrono::Duration::minutes(i as i64),
-                    status: AgentStatus::Online,
+                    tenant_id: Uuid::new_v4(),
+                    hardware_fingerprint: format!("HW{:09}", 123456789 + i),
+                    os_info: serde_json::json!({
+                        "hostname": format!("WIN-DESKTOP-{:03}", i + 1),
+                        "os": "Windows 10 Pro",
+                        "ip_address": format!("192.168.1.{}", 100 + i),
+                        "mac_address": format!("00:11:22:33:44:{:02X}", 55 + i)
+                    }),
+                    status: if i % 4 == 0 {
+                        AgentStatus::Offline
+                    } else {
+                        AgentStatus::Online
+                    },
+                    last_heartbeat: Some(
+                        chrono::Utc::now() - chrono::Duration::minutes((i * 10) as i64),
+                    ),
                     version: "1.0.0".to_string(),
-                    capabilities: vec!["file_monitoring".to_string(), "process_monitoring".to_string()],
-                    pending_commands: if i % 3 == 0 { vec![Uuid::new_v4()] } else { vec![] },
-                    metrics_buffer: vec![],
-                })
-            } else {
-                None
-            },
-            pending_commands: if i % 3 == 0 { 1 } else { 0 },
-            last_activity: chrono::Utc::now() - chrono::Duration::minutes((i * 2) as i64),
-        }
-    }).collect();
-    
+                    created_at: chrono::Utc::now() - chrono::Duration::days(i as i64),
+                    user_id: Some(Uuid::new_v4()),
+                    device_name: Some(format!("WIN-DESKTOP-{:03}", i + 1)),
+                    registered_via_key_id: None,
+                    registered_via_token_id: None,
+                },
+                connection: if i % 4 != 0 {
+                    Some(AgentConnection {
+                        agent_id,
+                        connection_id: Uuid::new_v4(),
+                        last_heartbeat: chrono::Utc::now()
+                            - chrono::Duration::minutes((i * 2) as i64),
+                        last_seen: chrono::Utc::now() - chrono::Duration::minutes(i as i64),
+                        status: AgentStatus::Online,
+                        version: "1.0.0".to_string(),
+                        capabilities: vec![
+                            "file_monitoring".to_string(),
+                            "process_monitoring".to_string(),
+                        ],
+                        pending_commands: if i % 3 == 0 {
+                            vec![Uuid::new_v4()]
+                        } else {
+                            vec![]
+                        },
+                        metrics_buffer: vec![],
+                    })
+                } else {
+                    None
+                },
+                pending_commands: if i % 3 == 0 { 1 } else { 0 },
+                last_activity: chrono::Utc::now() - chrono::Duration::minutes((i * 2) as i64),
+            }
+        })
+        .collect();
+
     Ok(Json(agents))
 }
 
@@ -319,11 +360,13 @@ pub async fn send_command_to_agent(
         executed_at: None,
         completed_at: None,
     };
-    
+
     // In real implementation, this would go through the communication service
-    info!("Command issued to agent {}: {} by user {}", 
-          agent_id, command.command_type, user.user_id);
-    
+    info!(
+        "Command issued to agent {}: {} by user {}",
+        agent_id, command.command_type, user.user_id
+    );
+
     Ok(Json(command))
 }
 
@@ -335,19 +378,21 @@ pub async fn send_bulk_command(
     if request.agent_ids.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "No agents specified"}))
+            Json(serde_json::json!({"error": "No agents specified"})),
         ));
     }
-    
+
     if request.agent_ids.len() > 100 {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "Too many agents specified (max 100)"}))
+            Json(serde_json::json!({"error": "Too many agents specified (max 100)"})),
         ));
     }
-    
-    let commands: Vec<_> = request.agent_ids.into_iter().map(|agent_id| {
-        AgentCommand {
+
+    let commands: Vec<_> = request
+        .agent_ids
+        .into_iter()
+        .map(|agent_id| AgentCommand {
             command_id: Uuid::new_v4(),
             agent_id,
             issued_by: user.user_id,
@@ -358,12 +403,16 @@ pub async fn send_bulk_command(
             issued_at: chrono::Utc::now(),
             executed_at: None,
             completed_at: None,
-        }
-    }).collect();
-    
-    info!("Bulk command issued to {} agents: {} by user {}", 
-          commands.len(), request.command_type, user.user_id);
-    
+        })
+        .collect();
+
+    info!(
+        "Bulk command issued to {} agents: {} by user {}",
+        commands.len(),
+        request.command_type,
+        user.user_id
+    );
+
     Ok(Json(commands))
 }
 
@@ -376,13 +425,17 @@ pub async fn emergency_isolate_agents(
     if request.agent_ids.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "No agents specified for isolation"}))
+            Json(serde_json::json!({"error": "No agents specified for isolation"})),
         ));
     }
-    
-    warn!("EMERGENCY ISOLATION requested by user {} for {} agents: {}", 
-          user.user_id, request.agent_ids.len(), request.reason);
-    
+
+    warn!(
+        "EMERGENCY ISOLATION requested by user {} for {} agents: {}",
+        user.user_id,
+        request.agent_ids.len(),
+        request.reason
+    );
+
     // In real implementation, this would use the communication service
     let response = serde_json::json!({
         "action": "emergency_isolation",
@@ -394,7 +447,7 @@ pub async fn emergency_isolate_agents(
         "status": "initiated",
         "estimated_completion": chrono::Utc::now() + chrono::Duration::seconds(30)
     });
-    
+
     Ok(Json(response))
 }
 
@@ -403,9 +456,11 @@ pub async fn broadcast_emergency_command(
     AuthUser(user): AuthUser,
     Json(request): Json<CommandRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    warn!("EMERGENCY BROADCAST requested by user {}: {}", 
-          user.user_id, request.command_type);
-    
+    warn!(
+        "EMERGENCY BROADCAST requested by user {}: {}",
+        user.user_id, request.command_type
+    );
+
     let response = serde_json::json!({
         "action": "emergency_broadcast",
         "initiated_by": user.user_id,
@@ -415,7 +470,7 @@ pub async fn broadcast_emergency_command(
         "timestamp": chrono::Utc::now(),
         "status": "broadcasting"
     });
-    
+
     Ok(Json(response))
 }
 
@@ -434,7 +489,7 @@ pub async fn get_communication_overview(
         average_response_time_ms: 245.7,
         heartbeat_failures: 3,
     };
-    
+
     let recent_activity = vec![
         ActivityEvent {
             timestamp: chrono::Utc::now() - chrono::Duration::minutes(5),
@@ -455,20 +510,20 @@ pub async fn get_communication_overview(
             description: "Agent WIN-DESKTOP-023 went offline (heartbeat timeout)".to_string(),
         },
     ];
-    
+
     let system_health = SystemHealth {
         overall_status: "healthy".to_string(),
         response_time_ms: 245.7,
         error_rate_percent: 0.8,
         uptime_hours: 127.3,
     };
-    
+
     let overview = CommunicationOverview {
         stats: mock_stats,
         recent_activity,
         system_health,
     };
-    
+
     Ok(Json(overview))
 }
 
@@ -502,7 +557,7 @@ pub async fn get_agent_performance_metrics(
         },
         "timestamp": chrono::Utc::now()
     });
-    
+
     Ok(Json(metrics))
 }
 
@@ -510,8 +565,14 @@ fn handle_error(error: SecureGuardError) -> (StatusCode, Json<serde_json::Value>
     let (status, message) = match error {
         SecureGuardError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg),
         SecureGuardError::AgentNotFound => (StatusCode::NOT_FOUND, "Agent not found".to_string()),
-        SecureGuardError::DatabaseError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string()),
-        _ => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string()),
+        SecureGuardError::DatabaseError(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Database error".to_string(),
+        ),
+        _ => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal server error".to_string(),
+        ),
     };
 
     (status, Json(serde_json::json!({ "error": message })))

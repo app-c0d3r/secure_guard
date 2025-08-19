@@ -1,13 +1,12 @@
-use sqlx::PgPool;
-use uuid::Uuid;
+use crate::websocket::message_router::MessageRouter;
 use chrono::{DateTime, Utc};
 use secureguard_shared::{
-    SecurityEvent, DetectionRule, ThreatAlert, AgentCommand, SystemMetrics,
-    CreateSecurityEventRequest, CreateAlertRequest, UpdateAlertRequest, CreateCommandRequest,
-    Severity, AlertStatus, CommandStatus,
-    SecureGuardError, Result
+    AgentCommand, AlertStatus, CommandStatus, CreateAlertRequest, CreateCommandRequest,
+    CreateSecurityEventRequest, DetectionRule, Result, SecureGuardError, SecurityEvent, Severity,
+    SystemMetrics, ThreatAlert, UpdateAlertRequest,
 };
-use crate::websocket::message_router::MessageRouter;
+use sqlx::PgPool;
+use uuid::Uuid;
 
 #[derive(Debug)]
 struct TimelineRow {
@@ -24,21 +23,25 @@ pub struct ThreatService {
 
 impl ThreatService {
     pub fn new(pool: PgPool) -> Self {
-        Self { 
+        Self {
             pool,
             message_router: None,
         }
     }
 
     pub fn with_message_router(pool: PgPool, message_router: MessageRouter) -> Self {
-        Self { 
+        Self {
             pool,
             message_router: Some(message_router),
         }
     }
 
     // Security Events
-    pub async fn create_security_event(&self, agent_id: Uuid, request: CreateSecurityEventRequest) -> Result<SecurityEvent> {
+    pub async fn create_security_event(
+        &self,
+        agent_id: Uuid,
+        request: CreateSecurityEventRequest,
+    ) -> Result<SecurityEvent> {
         let event = sqlx::query_as!(
             SecurityEvent,
             r#"
@@ -85,9 +88,13 @@ impl ThreatService {
         Ok(event)
     }
 
-    pub async fn get_security_events(&self, agent_id: Option<Uuid>, limit: Option<i64>) -> Result<Vec<SecurityEvent>> {
+    pub async fn get_security_events(
+        &self,
+        agent_id: Option<Uuid>,
+        limit: Option<i64>,
+    ) -> Result<Vec<SecurityEvent>> {
         let limit = limit.unwrap_or(100);
-        
+
         let events = if let Some(agent_id) = agent_id {
             sqlx::query_as!(
                 SecurityEvent,
@@ -128,7 +135,11 @@ impl ThreatService {
     }
 
     // Detection Rules
-    pub async fn create_detection_rule(&self, rule: DetectionRule, created_by: Uuid) -> Result<DetectionRule> {
+    pub async fn create_detection_rule(
+        &self,
+        rule: DetectionRule,
+        created_by: Uuid,
+    ) -> Result<DetectionRule> {
         let rule = sqlx::query_as!(
             DetectionRule,
             r#"
@@ -143,7 +154,7 @@ impl ThreatService {
             rule.rule_type,
             match rule.severity {
                 Severity::Low => "low",
-                Severity::Medium => "medium", 
+                Severity::Medium => "medium",
                 Severity::High => "high",
                 Severity::Critical => "critical",
             },
@@ -193,7 +204,11 @@ impl ThreatService {
     }
 
     // Threat Alerts
-    pub async fn create_alert(&self, agent_id: Uuid, request: CreateAlertRequest) -> Result<ThreatAlert> {
+    pub async fn create_alert(
+        &self,
+        agent_id: Uuid,
+        request: CreateAlertRequest,
+    ) -> Result<ThreatAlert> {
         let alert = sqlx::query_as!(
             ThreatAlert,
             r#"
@@ -224,7 +239,11 @@ impl ThreatService {
         Ok(alert)
     }
 
-    pub async fn update_alert(&self, alert_id: Uuid, request: UpdateAlertRequest) -> Result<ThreatAlert> {
+    pub async fn update_alert(
+        &self,
+        alert_id: Uuid,
+        request: UpdateAlertRequest,
+    ) -> Result<ThreatAlert> {
         let alert = sqlx::query_as!(
             ThreatAlert,
             r#"
@@ -256,7 +275,11 @@ impl ThreatService {
         Ok(alert)
     }
 
-    pub async fn get_alerts(&self, agent_id: Option<Uuid>, status: Option<AlertStatus>) -> Result<Vec<ThreatAlert>> {
+    pub async fn get_alerts(
+        &self,
+        agent_id: Option<Uuid>,
+        status: Option<AlertStatus>,
+    ) -> Result<Vec<ThreatAlert>> {
         let alerts = match (agent_id, status) {
             (Some(agent_id), Some(status)) => {
                 sqlx::query_as!(
@@ -332,7 +355,12 @@ impl ThreatService {
     }
 
     // Agent Commands
-    pub async fn create_command(&self, agent_id: Uuid, issued_by: Uuid, request: CreateCommandRequest) -> Result<AgentCommand> {
+    pub async fn create_command(
+        &self,
+        agent_id: Uuid,
+        issued_by: Uuid,
+        request: CreateCommandRequest,
+    ) -> Result<AgentCommand> {
         let command = sqlx::query_as!(
             AgentCommand,
             r#"
@@ -354,16 +382,21 @@ impl ThreatService {
         Ok(command)
     }
 
-    pub async fn update_command_status(&self, command_id: Uuid, status: CommandStatus, result: Option<serde_json::Value>) -> Result<AgentCommand> {
+    pub async fn update_command_status(
+        &self,
+        command_id: Uuid,
+        status: CommandStatus,
+        result: Option<serde_json::Value>,
+    ) -> Result<AgentCommand> {
         let status_str = match status {
             CommandStatus::Pending => "pending",
             CommandStatus::Sent => "sent",
             CommandStatus::Executing => "executing",
             CommandStatus::Completed => "completed",
-            CommandStatus::Failed => "failed", 
+            CommandStatus::Failed => "failed",
             CommandStatus::Timeout => "timeout",
         };
-        
+
         let command = sqlx::query_as!(
             AgentCommand,
             r#"
@@ -392,7 +425,7 @@ impl ThreatService {
     // Detection Rule Processing
     async fn process_detection_rules(&self, event: &SecurityEvent) -> Result<()> {
         let rules = self.get_detection_rules(true).await?;
-        
+
         for rule in rules {
             if self.evaluate_rule(&rule, event).await? {
                 let alert_request = CreateAlertRequest {
@@ -403,33 +436,37 @@ impl ThreatService {
                     title: format!("Security Alert: {}", rule.name),
                     description: rule.description.clone(),
                 };
-                
+
                 let alert = self.create_alert(event.agent_id, alert_request).await?;
-                
+
                 // Broadcast alert in real-time
                 if let Some(router) = &self.message_router {
-                    if let Err(e) = router.route_threat_alert(&alert, "Agent", &event.title).await {
+                    if let Err(e) = router
+                        .route_threat_alert(&alert, "Agent", &event.title)
+                        .await
+                    {
                         tracing::warn!("Failed to broadcast threat alert: {}", e);
                     }
                 }
             }
         }
-        
+
         Ok(())
     }
 
     async fn evaluate_rule(&self, rule: &DetectionRule, event: &SecurityEvent) -> Result<bool> {
         // Advanced rule evaluation engine
-        
+
         // Check if event type matches rule type
         if rule.rule_type != "all" && rule.rule_type != event.event_type {
             return Ok(false);
         }
-        
+
         // Parse rule conditions
-        let conditions = rule.conditions.as_object()
-            .ok_or_else(|| SecureGuardError::ValidationError("Invalid rule conditions format".to_string()))?;
-        
+        let conditions = rule.conditions.as_object().ok_or_else(|| {
+            SecureGuardError::ValidationError("Invalid rule conditions format".to_string())
+        })?;
+
         // Evaluate different condition types
         match rule.rule_type.as_str() {
             "process" => self.evaluate_process_conditions(conditions, event).await,
@@ -440,15 +477,22 @@ impl ThreatService {
             _ => self.evaluate_generic_conditions(conditions, event).await,
         }
     }
-    
-    async fn evaluate_process_conditions(&self, conditions: &serde_json::Map<String, serde_json::Value>, event: &SecurityEvent) -> Result<bool> {
+
+    async fn evaluate_process_conditions(
+        &self,
+        conditions: &serde_json::Map<String, serde_json::Value>,
+        event: &SecurityEvent,
+    ) -> Result<bool> {
         // Check suspicious process paths
         if let Some(suspicious_paths) = conditions.get("process_path") {
             if let Some(paths) = suspicious_paths.as_array() {
                 if let Some(process_name) = &event.process_name {
                     for path in paths {
                         if let Some(path_str) = path.as_str() {
-                            if process_name.to_lowercase().contains(&path_str.to_lowercase()) {
+                            if process_name
+                                .to_lowercase()
+                                .contains(&path_str.to_lowercase())
+                            {
                                 return Ok(true);
                             }
                         }
@@ -456,7 +500,7 @@ impl ThreatService {
                 }
             }
         }
-        
+
         // Check file extensions
         if let Some(extensions) = conditions.get("extensions") {
             if let Some(exts) = extensions.as_array() {
@@ -471,18 +515,25 @@ impl ThreatService {
                 }
             }
         }
-        
+
         Ok(false)
     }
-    
-    async fn evaluate_file_conditions(&self, conditions: &serde_json::Map<String, serde_json::Value>, event: &SecurityEvent) -> Result<bool> {
+
+    async fn evaluate_file_conditions(
+        &self,
+        conditions: &serde_json::Map<String, serde_json::Value>,
+        event: &SecurityEvent,
+    ) -> Result<bool> {
         // Check critical system file modifications
         if let Some(protected_paths) = conditions.get("file_paths") {
             if let Some(paths) = protected_paths.as_array() {
                 if let Some(file_path) = &event.file_path {
                     for path in paths {
                         if let Some(path_str) = path.as_str() {
-                            if file_path.to_lowercase().starts_with(&path_str.to_lowercase()) {
+                            if file_path
+                                .to_lowercase()
+                                .starts_with(&path_str.to_lowercase())
+                            {
                                 return Ok(true);
                             }
                         }
@@ -490,7 +541,7 @@ impl ThreatService {
                 }
             }
         }
-        
+
         // Check file operations
         if let Some(operations) = conditions.get("operations") {
             if let Some(ops) = operations.as_array() {
@@ -509,11 +560,15 @@ impl ThreatService {
                 }
             }
         }
-        
+
         Ok(false)
     }
-    
-    async fn evaluate_network_conditions(&self, conditions: &serde_json::Map<String, serde_json::Value>, event: &SecurityEvent) -> Result<bool> {
+
+    async fn evaluate_network_conditions(
+        &self,
+        conditions: &serde_json::Map<String, serde_json::Value>,
+        event: &SecurityEvent,
+    ) -> Result<bool> {
         // Check suspicious IP connections
         if let Some(remote_ips) = conditions.get("remote_ips") {
             if let Some(ips) = remote_ips.as_array() {
@@ -526,13 +581,13 @@ impl ThreatService {
                                     if self.is_tor_exit_node(source_ip).await? {
                                         return Ok(true);
                                     }
-                                },
+                                }
                                 "malware_c2" => {
                                     // Check against known C2 servers
                                     if self.is_known_malware_c2(source_ip).await? {
                                         return Ok(true);
                                     }
-                                },
+                                }
                                 _ => continue,
                             }
                         }
@@ -540,11 +595,15 @@ impl ThreatService {
                 }
             }
         }
-        
+
         Ok(false)
     }
-    
-    async fn evaluate_registry_conditions(&self, conditions: &serde_json::Map<String, serde_json::Value>, event: &SecurityEvent) -> Result<bool> {
+
+    async fn evaluate_registry_conditions(
+        &self,
+        conditions: &serde_json::Map<String, serde_json::Value>,
+        event: &SecurityEvent,
+    ) -> Result<bool> {
         // Check registry persistence locations
         if let Some(registry_keys) = conditions.get("registry_keys") {
             if let Some(keys) = registry_keys.as_array() {
@@ -553,7 +612,10 @@ impl ThreatService {
                         if let Some(key_str) = registry_key.as_str() {
                             for key in keys {
                                 if let Some(expected_key) = key.as_str() {
-                                    if key_str.to_lowercase().contains(&expected_key.to_lowercase()) {
+                                    if key_str
+                                        .to_lowercase()
+                                        .contains(&expected_key.to_lowercase())
+                                    {
                                         return Ok(true);
                                     }
                                 }
@@ -563,26 +625,37 @@ impl ThreatService {
                 }
             }
         }
-        
+
         Ok(false)
     }
-    
-    async fn evaluate_auth_conditions(&self, conditions: &serde_json::Map<String, serde_json::Value>, event: &SecurityEvent) -> Result<bool> {
+
+    async fn evaluate_auth_conditions(
+        &self,
+        conditions: &serde_json::Map<String, serde_json::Value>,
+        event: &SecurityEvent,
+    ) -> Result<bool> {
         // Check for multiple failed login attempts
         if let Some(count_threshold) = conditions.get("count") {
             if let Some(timeframe) = conditions.get("timeframe") {
-                if let (Some(count), Some(seconds)) = (count_threshold.as_i64(), timeframe.as_i64()) {
-                    return self.check_failed_login_pattern(event, count as i32, seconds as i32).await;
+                if let (Some(count), Some(seconds)) = (count_threshold.as_i64(), timeframe.as_i64())
+                {
+                    return self
+                        .check_failed_login_pattern(event, count as i32, seconds as i32)
+                        .await;
                 }
             }
         }
-        
+
         Ok(false)
     }
-    
-    async fn evaluate_generic_conditions(&self, conditions: &serde_json::Map<String, serde_json::Value>, event: &SecurityEvent) -> Result<bool> {
+
+    async fn evaluate_generic_conditions(
+        &self,
+        conditions: &serde_json::Map<String, serde_json::Value>,
+        event: &SecurityEvent,
+    ) -> Result<bool> {
         // Generic rule evaluation for custom conditions
-        
+
         // Check severity threshold
         if let Some(min_severity) = conditions.get("min_severity") {
             if let Some(severity_str) = min_severity.as_str() {
@@ -593,23 +666,23 @@ impl ThreatService {
                     "critical" => 4,
                     _ => 1,
                 };
-                
+
                 let event_level = match event.severity {
                     Severity::Low => 1,
                     Severity::Medium => 2,
                     Severity::High => 3,
                     Severity::Critical => 4,
                 };
-                
+
                 if event_level >= required_level {
                     return Ok(true);
                 }
             }
         }
-        
+
         Ok(false)
     }
-    
+
     async fn is_tor_exit_node(&self, ip: &str) -> Result<bool> {
         // Simplified TOR detection - in production, integrate with threat intelligence
         // Common TOR exit node patterns (this is a simplified example)
@@ -619,26 +692,31 @@ impl ThreatService {
                 return Ok(false); // These are local IPs, not TOR
             }
         }
-        
+
         // For demo purposes, flag any external IP as potentially suspicious
         Ok(!ip.starts_with("192.168.") && !ip.starts_with("10.") && !ip.starts_with("172."))
     }
-    
+
     async fn is_known_malware_c2(&self, ip: &str) -> Result<bool> {
         // In production, this would check against threat intelligence feeds
         // For demo, we'll use a simple blacklist
         let known_malicious = ["198.51.100.", "203.0.113.", "192.0.2."];
-        
+
         for malicious_prefix in &known_malicious {
             if ip.starts_with(malicious_prefix) {
                 return Ok(true);
             }
         }
-        
+
         Ok(false)
     }
-    
-    async fn check_failed_login_pattern(&self, event: &SecurityEvent, count_threshold: i32, timeframe_seconds: i32) -> Result<bool> {
+
+    async fn check_failed_login_pattern(
+        &self,
+        event: &SecurityEvent,
+        count_threshold: i32,
+        timeframe_seconds: i32,
+    ) -> Result<bool> {
         // Check for multiple failed login attempts from the same source
         let failed_attempts = sqlx::query_scalar!(
             r#"
@@ -656,7 +734,7 @@ impl ThreatService {
         .await
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?
         .unwrap_or(0);
-        
+
         Ok(failed_attempts >= count_threshold as i64)
     }
 
@@ -679,7 +757,11 @@ impl ThreatService {
     }
 
     // Advanced threat analysis methods
-    pub async fn analyze_threat_patterns(&self, agent_id: Uuid, hours: i32) -> Result<serde_json::Value> {
+    pub async fn analyze_threat_patterns(
+        &self,
+        agent_id: Uuid,
+        hours: i32,
+    ) -> Result<serde_json::Value> {
         let threat_summary = sqlx::query!(
             r#"
             SELECT 
@@ -740,7 +822,11 @@ impl ThreatService {
         }))
     }
 
-    pub async fn get_threat_timeline(&self, agent_id: Option<Uuid>, hours: i32) -> Result<Vec<serde_json::Value>> {
+    pub async fn get_threat_timeline(
+        &self,
+        agent_id: Option<Uuid>,
+        hours: i32,
+    ) -> Result<Vec<serde_json::Value>> {
         let timeline = if let Some(agent_id) = agent_id {
             sqlx::query_as!(
                 TimelineRow,
@@ -798,7 +884,15 @@ impl ThreatService {
         Ok(timeline_data)
     }
 
-    pub async fn create_custom_detection_rule(&self, name: String, rule_type: String, conditions: serde_json::Value, actions: serde_json::Value, severity: Severity, created_by: Uuid) -> Result<DetectionRule> {
+    pub async fn create_custom_detection_rule(
+        &self,
+        name: String,
+        rule_type: String,
+        conditions: serde_json::Value,
+        actions: serde_json::Value,
+        severity: Severity,
+        created_by: Uuid,
+    ) -> Result<DetectionRule> {
         let rule = DetectionRule {
             rule_id: Uuid::new_v4(),
             name,
@@ -816,9 +910,12 @@ impl ThreatService {
         self.create_detection_rule(rule, created_by).await
     }
 
-    pub async fn bulk_process_events(&self, events: Vec<(Uuid, CreateSecurityEventRequest)>) -> Result<Vec<SecurityEvent>> {
+    pub async fn bulk_process_events(
+        &self,
+        events: Vec<(Uuid, CreateSecurityEventRequest)>,
+    ) -> Result<Vec<SecurityEvent>> {
         let mut processed_events = Vec::new();
-        
+
         for (agent_id, event_request) in events {
             match self.create_security_event(agent_id, event_request).await {
                 Ok(event) => processed_events.push(event),
@@ -828,7 +925,7 @@ impl ThreatService {
                 }
             }
         }
-        
+
         Ok(processed_events)
     }
 

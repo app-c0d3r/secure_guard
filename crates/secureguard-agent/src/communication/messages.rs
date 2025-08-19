@@ -67,7 +67,7 @@ pub struct SystemInfo {
 pub struct CpuInfo {
     pub usage_percent: f64,
     pub core_count: u32,
-    pub frequency: u64, // MHz
+    pub frequency: u64,           // MHz
     pub temperature: Option<f64>, // Celsius
 }
 

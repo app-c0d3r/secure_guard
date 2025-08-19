@@ -11,8 +11,9 @@ pub struct Config {
 impl Config {
     pub fn from_env() -> anyhow::Result<Self> {
         Ok(Self {
-            database_url: env::var("DATABASE_URL")
-                .unwrap_or_else(|_| "postgresql://postgres:password@localhost:5432/secureguard".to_string()),
+            database_url: env::var("DATABASE_URL").unwrap_or_else(|_| {
+                "postgresql://postgres:password@localhost:5432/secureguard".to_string()
+            }),
             redis_url: env::var("REDIS_URL")
                 .unwrap_or_else(|_| "redis://localhost:6379".to_string()),
             jwt_secret: env::var("JWT_SECRET")

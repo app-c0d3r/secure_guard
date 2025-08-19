@@ -1,5 +1,5 @@
-use sqlx::{PgPool, postgres::PgPoolOptions};
 use anyhow::Result;
+use sqlx::{postgres::PgPoolOptions, PgPool};
 
 #[derive(Clone)]
 pub struct Database {

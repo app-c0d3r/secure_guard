@@ -1,13 +1,12 @@
+use super::subscription_service::SubscriptionService;
+use bcrypt::{hash, verify, DEFAULT_COST};
+use chrono::{Duration, Utc};
+use secureguard_shared::{
+    ApiKey, CreateApiKeyRequest, CreateApiKeyResponse, CreateRegistrationTokenRequest,
+    CreateRegistrationTokenResponse, RegistrationToken, Result, SecureGuardError,
+};
 use sqlx::PgPool;
 use uuid::Uuid;
-use chrono::{Utc, Duration};
-use bcrypt::{hash, verify, DEFAULT_COST};
-use secureguard_shared::{
-    ApiKey, CreateApiKeyRequest, CreateApiKeyResponse,
-    RegistrationToken, CreateRegistrationTokenRequest, CreateRegistrationTokenResponse,
-    SecureGuardError, Result
-};
-use super::subscription_service::SubscriptionService;
 
 pub struct ApiKeyService {
     pool: PgPool,
@@ -17,16 +16,23 @@ pub struct ApiKeyService {
 impl ApiKeyService {
     pub fn new(pool: PgPool) -> Self {
         let subscription_service = SubscriptionService::new(pool.clone());
-        Self { 
+        Self {
             pool,
             subscription_service,
         }
     }
 
     /// Generate a new API key for a user
-    pub async fn create_api_key(&self, user_id: Uuid, request: CreateApiKeyRequest) -> Result<CreateApiKeyResponse> {
+    pub async fn create_api_key(
+        &self,
+        user_id: Uuid,
+        request: CreateApiKeyRequest,
+    ) -> Result<CreateApiKeyResponse> {
         // Check subscription limits BEFORE creating API key
-        let api_key_limit_check = self.subscription_service.can_create_api_key(user_id).await?;
+        let api_key_limit_check = self
+            .subscription_service
+            .can_create_api_key(user_id)
+            .await?;
         if !api_key_limit_check.allowed {
             return Err(SecureGuardError::SubscriptionLimitExceeded(
                 format!("API key creation failed: {}. Please upgrade your subscription to create more API keys.", 
@@ -39,15 +45,16 @@ impl ApiKeyService {
         let prefix = format!("sg_{}", &key_id.to_string()[0..8]);
         let random_suffix = uuid::Uuid::new_v4().to_string().replace("-", "")[0..20].to_string();
         let full_api_key = format!("{}_{}", prefix, random_suffix);
-        
+
         // Hash the API key for storage
-        let key_hash = hash(&full_api_key, DEFAULT_COST)
-            .map_err(|e| SecureGuardError::InternalError(format!("Failed to hash API key: {}", e)))?;
+        let key_hash = hash(&full_api_key, DEFAULT_COST).map_err(|e| {
+            SecureGuardError::InternalError(format!("Failed to hash API key: {}", e))
+        })?;
 
         // Calculate expiration if requested
-        let expires_at = request.expires_in_days.map(|days| {
-            Utc::now() + Duration::days(days as i64)
-        });
+        let expires_at = request
+            .expires_in_days
+            .map(|days| Utc::now() + Duration::days(days as i64));
 
         // Insert into database
         let api_key = sqlx::query_as!(
@@ -69,7 +76,11 @@ impl ApiKeyService {
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
         // Increment API key count in subscription tracking
-        if let Err(e) = self.subscription_service.increment_api_key_count(user_id).await {
+        if let Err(e) = self
+            .subscription_service
+            .increment_api_key_count(user_id)
+            .await
+        {
             // Log the error but don't fail creation - key is already created
             tracing::warn!("Failed to update API key count for user {}: {}", user_id, e);
         }
@@ -84,11 +95,14 @@ impl ApiKeyService {
     }
 
     /// Validate API key and return user_id if valid
-    pub async fn validate_api_key(&self, api_key: &str) -> Result<(Uuid, Uuid)> { // Returns (user_id, key_id)
+    pub async fn validate_api_key(&self, api_key: &str) -> Result<(Uuid, Uuid)> {
+        // Returns (user_id, key_id)
         // Extract prefix from API key
         let parts: Vec<&str> = api_key.split('_').collect();
         if parts.len() != 3 || parts[0] != "sg" {
-            return Err(SecureGuardError::AuthenticationError("Invalid API key format".to_string()));
+            return Err(SecureGuardError::AuthenticationError(
+                "Invalid API key format".to_string(),
+            ));
         }
         let prefix = format!("{}_{}", parts[0], parts[1]);
 
@@ -105,23 +119,27 @@ impl ApiKeyService {
         .await
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
-        let stored_key = stored_key.ok_or_else(|| {
-            SecureGuardError::AuthenticationError("Invalid API key".to_string())
-        })?;
+        let stored_key = stored_key
+            .ok_or_else(|| SecureGuardError::AuthenticationError("Invalid API key".to_string()))?;
 
         // Check if key is expired
         if let Some(expires_at) = stored_key.expires_at {
             if Utc::now() > expires_at {
-                return Err(SecureGuardError::AuthenticationError("API key has expired".to_string()));
+                return Err(SecureGuardError::AuthenticationError(
+                    "API key has expired".to_string(),
+                ));
             }
         }
 
         // Verify the API key
-        let is_valid = verify(api_key, &stored_key.key_hash)
-            .map_err(|e| SecureGuardError::InternalError(format!("Failed to verify API key: {}", e)))?;
+        let is_valid = verify(api_key, &stored_key.key_hash).map_err(|e| {
+            SecureGuardError::InternalError(format!("Failed to verify API key: {}", e))
+        })?;
 
         if !is_valid {
-            return Err(SecureGuardError::AuthenticationError("Invalid API key".to_string()));
+            return Err(SecureGuardError::AuthenticationError(
+                "Invalid API key".to_string(),
+            ));
         }
 
         // Update last used timestamp and usage count
@@ -173,18 +191,31 @@ impl ApiKeyService {
         }
 
         // Decrement API key count in subscription tracking
-        if let Err(e) = self.subscription_service.decrement_api_key_count(user_id).await {
+        if let Err(e) = self
+            .subscription_service
+            .decrement_api_key_count(user_id)
+            .await
+        {
             // Log the error but don't fail revocation - key is already revoked
-            tracing::warn!("Failed to update API key count after revocation for user {}: {}", user_id, e);
+            tracing::warn!(
+                "Failed to update API key count after revocation for user {}: {}",
+                user_id,
+                e
+            );
         }
 
         Ok(())
     }
 
     /// Create a one-time registration token
-    pub async fn create_registration_token(&self, user_id: Uuid, request: CreateRegistrationTokenRequest) -> Result<CreateRegistrationTokenResponse> {
+    pub async fn create_registration_token(
+        &self,
+        user_id: Uuid,
+        request: CreateRegistrationTokenRequest,
+    ) -> Result<CreateRegistrationTokenResponse> {
         let token_id = Uuid::new_v4();
-        let registration_token = format!("rt_{}", uuid::Uuid::new_v4().to_string().replace("-", ""));
+        let registration_token =
+            format!("rt_{}", uuid::Uuid::new_v4().to_string().replace("-", ""));
         let expires_at = Utc::now() + Duration::hours(24); // 24 hour expiration
 
         // Hash the token
@@ -216,9 +247,12 @@ impl ApiKeyService {
     }
 
     /// Validate and consume a registration token
-    pub async fn validate_and_consume_token(&self, token: &str) -> Result<(Uuid, String)> { // Returns (user_id, device_name)
+    pub async fn validate_and_consume_token(&self, token: &str) -> Result<(Uuid, String)> {
+        // Returns (user_id, device_name)
         if !token.starts_with("rt_") {
-            return Err(SecureGuardError::AuthenticationError("Invalid token format".to_string()));
+            return Err(SecureGuardError::AuthenticationError(
+                "Invalid token format".to_string(),
+            ));
         }
 
         // Find the token
@@ -261,7 +295,10 @@ impl ApiKeyService {
     }
 
     /// List user's registration tokens
-    pub async fn list_user_registration_tokens(&self, user_id: Uuid) -> Result<Vec<RegistrationToken>> {
+    pub async fn list_user_registration_tokens(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<RegistrationToken>> {
         let tokens = sqlx::query_as!(
             RegistrationToken,
             r#"

@@ -1,8 +1,8 @@
+use chrono::Utc;
+use secureguard_shared::{Result, SecureGuardError};
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
-use chrono::Utc;
-use secureguard_shared::{SecureGuardError, Result};
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct SubscriptionPlan {
@@ -140,7 +140,7 @@ impl SubscriptionService {
                     alert_history_days: sub.alert_history_days,
                     monthly_price_cents: sub.monthly_price_cents,
                     yearly_price_cents: sub.yearly_price_cents,
-                }
+                },
             }))
         } else {
             Ok(None)
@@ -149,7 +149,9 @@ impl SubscriptionService {
 
     /// Check if user can register another device
     pub async fn can_register_device(&self, user_id: Uuid) -> Result<LimitCheckResult> {
-        let subscription = self.get_user_subscription(user_id).await?
+        let subscription = self
+            .get_user_subscription(user_id)
+            .await?
             .ok_or_else(|| SecureGuardError::NotFound("User subscription not found".to_string()))?;
 
         let is_unlimited = subscription.plan.max_devices == -1;
@@ -165,8 +167,9 @@ impl SubscriptionService {
                 if is_unlimited {
                     "Unlimited devices available".to_string()
                 } else {
-                    format!("Device {} of {} available", 
-                        subscription.current_devices + 1, 
+                    format!(
+                        "Device {} of {} available",
+                        subscription.current_devices + 1,
                         subscription.plan.max_devices
                     )
                 }
@@ -175,19 +178,23 @@ impl SubscriptionService {
                     "Device limit reached ({}/{}). Upgrade to {} for more devices.",
                     subscription.current_devices,
                     subscription.plan.max_devices,
-                    self.get_recommended_upgrade(&subscription.plan.plan_slug).await?
+                    self.get_recommended_upgrade(&subscription.plan.plan_slug)
+                        .await?
                 )
-            }
+            },
         })
     }
 
     /// Check if user can create another API key
     pub async fn can_create_api_key(&self, user_id: Uuid) -> Result<LimitCheckResult> {
-        let subscription = self.get_user_subscription(user_id).await?
+        let subscription = self
+            .get_user_subscription(user_id)
+            .await?
             .ok_or_else(|| SecureGuardError::NotFound("User subscription not found".to_string()))?;
 
         let is_unlimited = subscription.plan.max_api_keys == -1;
-        let allowed = is_unlimited || subscription.current_api_keys < subscription.plan.max_api_keys;
+        let allowed =
+            is_unlimited || subscription.current_api_keys < subscription.plan.max_api_keys;
 
         Ok(LimitCheckResult {
             allowed,
@@ -199,8 +206,9 @@ impl SubscriptionService {
                 if is_unlimited {
                     "Unlimited API keys available".to_string()
                 } else {
-                    format!("API key {} of {} available", 
-                        subscription.current_api_keys + 1, 
+                    format!(
+                        "API key {} of {} available",
+                        subscription.current_api_keys + 1,
                         subscription.plan.max_api_keys
                     )
                 }
@@ -209,15 +217,22 @@ impl SubscriptionService {
                     "API key limit reached ({}/{}). Upgrade to {} for more keys.",
                     subscription.current_api_keys,
                     subscription.plan.max_api_keys,
-                    self.get_recommended_upgrade(&subscription.plan.plan_slug).await?
+                    self.get_recommended_upgrade(&subscription.plan.plan_slug)
+                        .await?
                 )
-            }
+            },
         })
     }
 
     /// Check if user has access to a specific feature
-    pub async fn check_feature_access(&self, user_id: Uuid, feature: &str) -> Result<FeatureAccessResult> {
-        let subscription = self.get_user_subscription(user_id).await?
+    pub async fn check_feature_access(
+        &self,
+        user_id: Uuid,
+        feature: &str,
+    ) -> Result<FeatureAccessResult> {
+        let subscription = self
+            .get_user_subscription(user_id)
+            .await?
             .ok_or_else(|| SecureGuardError::NotFound("User subscription not found".to_string()))?;
 
         let allowed = match feature {
@@ -248,11 +263,16 @@ impl SubscriptionService {
             required_plan: required_plan.clone(),
             current_plan: subscription.plan.plan_slug.clone(),
             upgrade_message: if allowed {
-                format!("Feature '{}' is available in your {} plan", feature, subscription.plan.display_name)
+                format!(
+                    "Feature '{}' is available in your {} plan",
+                    feature, subscription.plan.display_name
+                )
             } else {
-                format!("Feature '{}' requires {} plan. Upgrade to access this feature.", 
-                    feature, required_plan)
-            }
+                format!(
+                    "Feature '{}' requires {} plan. Upgrade to access this feature.",
+                    feature, required_plan
+                )
+            },
         })
     }
 
@@ -368,14 +388,24 @@ impl SubscriptionService {
 
     /// Get upgrade proposal for user
     pub async fn get_upgrade_proposal(&self, user_id: Uuid) -> Result<UpgradeProposal> {
-        let subscription = self.get_user_subscription(user_id).await?
+        let subscription = self
+            .get_user_subscription(user_id)
+            .await?
             .ok_or_else(|| SecureGuardError::NotFound("User subscription not found".to_string()))?;
 
-        let recommended_plan = self.get_recommended_upgrade(&subscription.plan.plan_slug).await?;
+        let recommended_plan = self
+            .get_recommended_upgrade(&subscription.plan.plan_slug)
+            .await?;
         let plans = self.get_all_plans().await?;
-        
-        let current_plan = plans.iter().find(|p| p.plan_slug == subscription.plan.plan_slug).unwrap();
-        let recommended = plans.iter().find(|p| p.plan_slug == recommended_plan).unwrap();
+
+        let current_plan = plans
+            .iter()
+            .find(|p| p.plan_slug == subscription.plan.plan_slug)
+            .unwrap();
+        let recommended = plans
+            .iter()
+            .find(|p| p.plan_slug == recommended_plan)
+            .unwrap();
 
         let additional_devices = if recommended.max_devices == -1 {
             999 // Show as "unlimited"
@@ -414,16 +444,23 @@ impl SubscriptionService {
     async fn get_minimum_plan_for_feature(&self, feature: &str) -> Result<String> {
         let required_plan = match feature {
             "real_time_monitoring" | "api_access" | "audit_logs" => "starter",
-            "advanced_threat_detection" | "custom_rules" | "vulnerability_scanning" | "remote_response" => "professional",
+            "advanced_threat_detection"
+            | "custom_rules"
+            | "vulnerability_scanning"
+            | "remote_response" => "professional",
             "compliance_reporting" | "custom_dashboards" | "bulk_operations" => "enterprise",
             _ => "professional", // Default to professional for unknown features
         };
         Ok(required_plan.to_string())
     }
 
-    fn get_additional_features(&self, current: &SubscriptionPlan, recommended: &SubscriptionPlan) -> Vec<String> {
+    fn get_additional_features(
+        &self,
+        current: &SubscriptionPlan,
+        recommended: &SubscriptionPlan,
+    ) -> Vec<String> {
         let mut features = Vec::new();
-        
+
         if !current.real_time_monitoring && recommended.real_time_monitoring {
             features.push("Real-time Monitoring".to_string());
         }

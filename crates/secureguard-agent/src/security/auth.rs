@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::utils::config::Config;
+use anyhow::Result;
 
 /// Authentication manager for the agent
 pub struct AuthManager {

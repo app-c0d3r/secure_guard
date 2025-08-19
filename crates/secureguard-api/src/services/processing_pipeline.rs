@@ -1,19 +1,19 @@
+use sqlx::PgPool;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::time;
+use tracing::{error, info, warn};
 use uuid::Uuid;
-use sqlx::PgPool;
-use tracing::{info, warn, error};
 
 use crate::services::{
-    threat_service::ThreatService,
-    realtime_service::RealtimeService,
     event_processor::{EventProcessor, PipelineConfig, ProcessingStats},
+    realtime_service::RealtimeService,
+    threat_service::ThreatService,
 };
 use crate::websocket::connection_manager::ConnectionManager;
 use secureguard_shared::{
-    CreateSecurityEventRequest, AgentCommand, CommandStatus,
-    Severity, SecureGuardError, Result, AgentStatus
+    AgentCommand, AgentStatus, CommandStatus, CreateSecurityEventRequest, Result, SecureGuardError,
+    Severity,
 };
 
 // Main processing pipeline orchestrator
@@ -23,7 +23,7 @@ pub struct ProcessingPipeline {
     realtime_service: Arc<RealtimeService>,
     threat_service: Arc<ThreatService>,
     pool: PgPool,
-    
+
     // Pipeline health monitoring
     health_check_interval: Duration,
     last_health_check: Arc<tokio::sync::RwLock<Instant>>,
@@ -76,10 +76,10 @@ impl ProcessingPipeline {
         // Initialize core services
         let realtime_service = Arc::new(RealtimeService::new(pool.clone(), connection_manager));
         let threat_service = Arc::new(ThreatService::with_message_router(
-            pool.clone(), 
-            realtime_service.get_message_router()
+            pool.clone(),
+            realtime_service.get_message_router(),
         ));
-        
+
         // Initialize event processor
         let event_processor = Arc::new(EventProcessor::new(
             pool.clone(),
@@ -108,10 +108,10 @@ impl ProcessingPipeline {
 
         // Start health monitoring
         self.start_health_monitor().await;
-        
+
         // Start automated response system
         self.start_automated_response_system().await;
-        
+
         // Load threat intelligence feeds
         self.initialize_threat_intelligence().await?;
 
@@ -131,11 +131,16 @@ impl ProcessingPipeline {
         self.enrich_event(&mut event_request, agent_id).await?;
 
         // Step 2: Queue for processing
-        self.event_processor.queue_event(agent_id, event_request).await?;
+        self.event_processor
+            .queue_event(agent_id, event_request)
+            .await?;
 
         let processing_time = start_time.elapsed();
         if processing_time > Duration::from_millis(100) {
-            warn!("Event preprocessing took {:?} for agent {}", processing_time, agent_id);
+            warn!(
+                "Event preprocessing took {:?} for agent {}",
+                processing_time, agent_id
+            );
         }
 
         Ok(())
@@ -147,17 +152,20 @@ impl ProcessingPipeline {
         events: Vec<(Uuid, CreateSecurityEventRequest)>,
     ) -> Result<()> {
         info!("Processing batch of {} events", events.len());
-        
+
         let mut enriched_events = Vec::new();
-        
+
         // Enrich all events in parallel
-        let enrichment_tasks: Vec<_> = events.into_iter().map(|(agent_id, mut event)| {
-            let pipeline = self.clone();
-            async move {
-                pipeline.enrich_event(&mut event, agent_id).await?;
-                Ok::<_, SecureGuardError>((agent_id, event))
-            }
-        }).collect();
+        let enrichment_tasks: Vec<_> = events
+            .into_iter()
+            .map(|(agent_id, mut event)| {
+                let pipeline = self.clone();
+                async move {
+                    pipeline.enrich_event(&mut event, agent_id).await?;
+                    Ok::<_, SecureGuardError>((agent_id, event))
+                }
+            })
+            .collect();
 
         // Wait for all enrichments to complete
         for task in enrichment_tasks {
@@ -168,8 +176,10 @@ impl ProcessingPipeline {
         }
 
         // Queue all enriched events
-        self.event_processor.queue_events_batch(enriched_events).await?;
-        
+        self.event_processor
+            .queue_events_batch(enriched_events)
+            .await?;
+
         Ok(())
     }
 
@@ -177,16 +187,22 @@ impl ProcessingPipeline {
     pub async fn get_health_status(&self) -> PipelineHealth {
         let uptime_seconds = self.last_health_check.read().await.elapsed().as_secs();
         let processing_stats = self.event_processor.get_stats().await;
-        
+
         // Check database health
         let db_healthy = self.check_database_health().await;
-        
+
         // Get WebSocket connection count
-        let (_, dashboard_count, _) = self.realtime_service.get_message_router().get_connection_stats().await;
-        
+        let (_, dashboard_count, _) = self
+            .realtime_service
+            .get_message_router()
+            .get_connection_stats()
+            .await;
+
         // Calculate performance score
-        let performance_score = self.calculate_performance_score(&processing_stats, db_healthy).await;
-        
+        let performance_score = self
+            .calculate_performance_score(&processing_stats, db_healthy)
+            .await;
+
         PipelineHealth {
             is_healthy: db_healthy && performance_score > 0.7,
             uptime_seconds,
@@ -201,14 +217,16 @@ impl ProcessingPipeline {
     // Emergency pipeline controls
     pub async fn emergency_stop(&self) -> Result<()> {
         warn!("EMERGENCY STOP: Halting all processing pipeline operations");
-        
+
         // Broadcast emergency alert
-        self.realtime_service.broadcast_emergency_alert(
-            "Pipeline Emergency Stop",
-            "Processing pipeline has been emergency stopped",
-            Severity::Critical,
-            vec![], // Affects all agents
-        ).await?;
+        self.realtime_service
+            .broadcast_emergency_alert(
+                "Pipeline Emergency Stop",
+                "Processing pipeline has been emergency stopped",
+                Severity::Critical,
+                vec![], // Affects all agents
+            )
+            .await?;
 
         info!("Emergency stop completed");
         Ok(())
@@ -216,7 +234,7 @@ impl ProcessingPipeline {
 
     pub async fn emergency_isolate_agents(&self, agent_ids: Vec<Uuid>) -> Result<()> {
         warn!("EMERGENCY ISOLATION: Isolating {} agents", agent_ids.len());
-        
+
         for agent_id in agent_ids {
             // Send isolation command to agent
             let isolation_command = AgentCommand {
@@ -236,8 +254,15 @@ impl ProcessingPipeline {
                 completed_at: None,
             };
 
-            if let Err(e) = self.realtime_service.send_agent_command(agent_id, &isolation_command).await {
-                error!("Failed to send isolation command to agent {}: {}", agent_id, e);
+            if let Err(e) = self
+                .realtime_service
+                .send_agent_command(agent_id, &isolation_command)
+                .await
+            {
+                error!(
+                    "Failed to send isolation command to agent {}: {}",
+                    agent_id, e
+                );
             }
         }
 
@@ -247,7 +272,7 @@ impl ProcessingPipeline {
     // Performance optimization and scaling
     pub async fn optimize_pipeline_performance(&self) -> Result<()> {
         let stats = self.event_processor.get_stats().await;
-        
+
         // Adaptive scaling based on queue depth and processing rate
         if stats.queue_depth > 1000 && stats.events_per_second < 50.0 {
             info!("High queue depth detected, consider scaling up processing capacity");
@@ -255,7 +280,10 @@ impl ProcessingPipeline {
         }
 
         if stats.processing_latency_ms > 500.0 {
-            warn!("High processing latency detected: {:.2}ms", stats.processing_latency_ms);
+            warn!(
+                "High processing latency detected: {:.2}ms",
+                stats.processing_latency_ms
+            );
             // Could trigger performance optimization here
         }
 
@@ -278,9 +306,11 @@ impl ProcessingPipeline {
 
         // Add enrichment to event data
         if let Some(existing_data) = event_request.event_data.as_object_mut() {
-            existing_data.insert("enrichment".to_string(), 
+            existing_data.insert(
+                "enrichment".to_string(),
                 serde_json::to_value(enrichment)
-                    .map_err(|e| SecureGuardError::ValidationError(e.to_string()))?);
+                    .map_err(|e| SecureGuardError::ValidationError(e.to_string()))?,
+            );
         }
 
         Ok(())
@@ -300,17 +330,21 @@ impl ProcessingPipeline {
         }
     }
 
-    async fn get_threat_intelligence(&self, event: &CreateSecurityEventRequest) -> Option<ThreatIntelligence> {
+    async fn get_threat_intelligence(
+        &self,
+        event: &CreateSecurityEventRequest,
+    ) -> Option<ThreatIntelligence> {
         // Simplified threat intelligence lookup
         // In production, this would query threat intelligence databases
-        
+
         let mut threat_categories = Vec::new();
         let mut ioc_matches = Vec::new();
-        
+
         // Check for known malicious patterns
         if let Some(process_name) = &event.process_name {
-            if process_name.to_lowercase().contains("powershell") && 
-               event.event_data.get("command_line").is_some() {
+            if process_name.to_lowercase().contains("powershell")
+                && event.event_data.get("command_line").is_some()
+            {
                 threat_categories.push("PowerShell Execution".to_string());
                 ioc_matches.push("Suspicious PowerShell Activity".to_string());
             }
@@ -399,21 +433,27 @@ impl ProcessingPipeline {
         let pipeline = self.clone();
         tokio::spawn(async move {
             let mut interval = time::interval(pipeline.health_check_interval);
-            
+
             loop {
                 interval.tick().await;
-                
+
                 let health = pipeline.get_health_status().await;
-                
+
                 if !health.is_healthy {
-                    warn!("Pipeline health check FAILED: performance score {:.2}", health.performance_score);
+                    warn!(
+                        "Pipeline health check FAILED: performance score {:.2}",
+                        health.performance_score
+                    );
                 } else {
-                    info!("Pipeline health check OK: {:.1}% performance", health.performance_score * 100.0);
+                    info!(
+                        "Pipeline health check OK: {:.1}% performance",
+                        health.performance_score * 100.0
+                    );
                 }
-                
+
                 // Update last health check time
                 *pipeline.last_health_check.write().await = Instant::now();
-                
+
                 // Auto-optimization if needed
                 if health.performance_score < 0.5 {
                     if let Err(e) = pipeline.optimize_pipeline_performance().await {
@@ -436,10 +476,10 @@ impl ProcessingPipeline {
     async fn initialize_threat_intelligence(&self) -> Result<()> {
         // Initialize threat intelligence feeds and correlation patterns
         info!("Initializing threat intelligence feeds...");
-        
+
         // Add custom correlation patterns for common attack scenarios
         // These would typically be loaded from a database or external feed
-        
+
         info!("Threat intelligence initialized");
         Ok(())
     }
@@ -450,7 +490,7 @@ impl ProcessingPipeline {
     pub async fn get_system_metrics(&self) -> serde_json::Value {
         let health = self.get_health_status().await;
         let realtime_stats = self.realtime_service.get_realtime_stats().await;
-        
+
         serde_json::json!({
             "pipeline_health": health,
             "realtime_stats": realtime_stats,
@@ -461,11 +501,11 @@ impl ProcessingPipeline {
 
     pub async fn trigger_system_maintenance(&self) -> Result<()> {
         info!("Starting system maintenance routine");
-        
+
         // Cleanup old correlations and events
         // Optimize database performance
         // Clear caches
-        
+
         info!("System maintenance completed");
         Ok(())
     }

@@ -1,6 +1,6 @@
-use anyhow::Result;
-use crate::utils::config::Config;
 use crate::agent::core::SystemHealth;
+use crate::utils::config::Config;
+use anyhow::Result;
 
 /// System monitoring module
 pub struct SystemMonitor {

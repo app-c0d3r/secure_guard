@@ -1,17 +1,17 @@
-use axum::{
-    extract::{State, Query},
-    response::Response,
-    http::StatusCode,
-};
 use axum::extract::ws::WebSocketUpgrade;
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    response::Response,
+};
 use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
     database::Database,
     websocket::{
-        connection_manager::ConnectionManager,
         agent_handler::{handle_agent_websocket, AgentWebSocketQuery},
+        connection_manager::ConnectionManager,
         dashboard_handler::{handle_dashboard_websocket, DashboardWebSocketQuery},
     },
 };

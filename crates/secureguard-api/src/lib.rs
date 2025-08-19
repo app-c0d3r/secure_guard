@@ -1,17 +1,14 @@
 pub mod config;
 pub mod database;
 pub mod handlers;
-pub mod services;
 pub mod middleware;
 pub mod routes;
+pub mod services;
 pub mod websocket;
 
 pub use routes::create_api_routes;
 
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -25,7 +22,7 @@ pub async fn create_app(database: Database) -> Router {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
-                .layer(CorsLayer::permissive())
+                .layer(CorsLayer::permissive()),
         )
         .with_state(database)
 }

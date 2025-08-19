@@ -8,6 +8,6 @@ pub async fn health_check() -> (StatusCode, Json<Value>) {
             "status": "healthy",
             "service": "secureguard-api",
             "version": env!("CARGO_PKG_VERSION")
-        }))
+        })),
     )
 }

@@ -1,14 +1,14 @@
+use crate::{
+    database::Database,
+    services::{auth_service::AuthService, user_service::UserService},
+};
 use axum::{
     async_trait,
     extract::{FromRequestParts, State},
     http::{request::Parts, StatusCode},
     Json,
 };
-use secureguard_shared::{User, SecureGuardError};
-use crate::{
-    database::Database,
-    services::{auth_service::AuthService, user_service::UserService},
-};
+use secureguard_shared::{SecureGuardError, User};
 use uuid::Uuid;
 
 pub struct AuthUser(pub User);

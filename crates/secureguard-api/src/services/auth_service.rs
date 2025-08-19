@@ -1,10 +1,10 @@
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::{rand_core::OsRng, SaltString};
-use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey};
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use chrono::{Duration, Utc};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use secureguard_shared::{Result, SecureGuardError};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{Utc, Duration};
-use secureguard_shared::{SecureGuardError, Result};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -31,26 +31,28 @@ impl AuthService {
     pub fn hash_password(&self, password: &str) -> Result<String> {
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
-        
+
         let password_hash = argon2
             .hash_password(password.as_bytes(), &salt)
             .map_err(|e| SecureGuardError::InternalError(e.to_string()))?;
-        
+
         Ok(password_hash.to_string())
     }
 
     pub fn verify_password(&self, password: &str, hash: &str) -> Result<bool> {
-        let parsed_hash = PasswordHash::new(hash)
-            .map_err(|e| SecureGuardError::InternalError(e.to_string()))?;
-        
+        let parsed_hash =
+            PasswordHash::new(hash).map_err(|e| SecureGuardError::InternalError(e.to_string()))?;
+
         let argon2 = Argon2::default();
-        Ok(argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok())
+        Ok(argon2
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok())
     }
 
     pub fn generate_token(&self, user_id: Uuid) -> Result<String> {
         let now = Utc::now();
         let exp = now + Duration::hours(24);
-        
+
         let claims = Claims {
             sub: user_id.to_string(),
             exp: exp.timestamp(),

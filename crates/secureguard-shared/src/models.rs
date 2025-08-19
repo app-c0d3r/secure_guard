@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use sqlx::Type;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct User {
@@ -98,7 +98,7 @@ pub struct AuthResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegisterAgentRequest {
-    pub api_key: String, // API key from user profile
+    pub api_key: String,     // API key from user profile
     pub device_name: String, // User-friendly device name
     pub hardware_fingerprint: String,
     pub os_info: serde_json::Value,
@@ -140,7 +140,7 @@ pub struct CreateApiKeyResponse {
     pub expires_at: Option<DateTime<Utc>>,
 }
 
-// Registration token models  
+// Registration token models
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct RegistrationToken {
     pub token_id: Uuid,

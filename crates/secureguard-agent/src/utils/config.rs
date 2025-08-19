@@ -130,7 +130,7 @@ impl Config {
     /// Load configuration from file or create default
     pub async fn load() -> Result<Self> {
         let config_path = Self::get_config_path()?;
-        
+
         if config_path.exists() {
             Self::load_from_file(&config_path).await
         } else {
@@ -152,7 +152,7 @@ impl Config {
         if let Some(parent) = path.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
-        
+
         let content = toml::to_string_pretty(self)?;
         tokio::fs::write(path, content).await?;
         Ok(())
@@ -163,7 +163,7 @@ impl Config {
         #[cfg(target_os = "windows")]
         {
             let mut path = PathBuf::from(
-                std::env::var("PROGRAMDATA").unwrap_or_else(|_| "C:\\ProgramData".to_string())
+                std::env::var("PROGRAMDATA").unwrap_or_else(|_| "C:\\ProgramData".to_string()),
             );
             path.push("SecureGuard");
             path.push("config.toml");
@@ -199,7 +199,7 @@ impl Config {
         #[cfg(target_os = "windows")]
         {
             let mut path = PathBuf::from(
-                std::env::var("PROGRAMDATA").unwrap_or_else(|_| "C:\\ProgramData".to_string())
+                std::env::var("PROGRAMDATA").unwrap_or_else(|_| "C:\\ProgramData".to_string()),
             );
             path.push("SecureGuard");
             Ok(path)
@@ -232,19 +232,22 @@ impl Config {
         let current_json = serde_json::to_value(&*self)?;
         let merged = merge_json_values(current_json, updates)?;
         *self = serde_json::from_value(merged)?;
-        
+
         // Save updated configuration
         let config_path = Self::get_config_path()?;
         self.save_to_file(&config_path).await?;
-        
+
         Ok(())
     }
 }
 
 /// Simple JSON value merging function
-fn merge_json_values(base: serde_json::Value, updates: serde_json::Value) -> Result<serde_json::Value> {
-    use serde_json::{Value, Map};
-    
+fn merge_json_values(
+    base: serde_json::Value,
+    updates: serde_json::Value,
+) -> Result<serde_json::Value> {
+    use serde_json::{Map, Value};
+
     match (base, updates) {
         (Value::Object(mut base_map), Value::Object(update_map)) => {
             for (key, value) in update_map {

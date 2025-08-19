@@ -1,6 +1,6 @@
-use anyhow::Result;
-use crate::utils::config::Config;
 use crate::communication::messages::SystemInfo;
+use crate::utils::config::Config;
+use anyhow::Result;
 
 /// Data collector module
 pub struct DataCollector {
@@ -26,7 +26,7 @@ impl DataCollector {
 
     pub async fn collect_system_data(&mut self) -> Result<SystemInfo> {
         use crate::communication::messages::*;
-        
+
         // TODO: Implement actual system data collection
         Ok(SystemInfo {
             cpu_info: CpuInfo {

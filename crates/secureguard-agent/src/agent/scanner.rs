@@ -1,6 +1,6 @@
-use anyhow::Result;
-use crate::utils::config::Config;
 use crate::security::SecurityEvent;
+use crate::utils::config::Config;
+use anyhow::Result;
 
 /// Security scanner module
 pub struct SecurityScanner {

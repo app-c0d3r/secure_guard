@@ -1,10 +1,12 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tracing::{error, info, warn};
 use uuid::Uuid;
-use tracing::{info, warn, error};
 
 use crate::websocket::connection_manager::ConnectionManager;
-use secureguard_shared::{AgentMessage, DashboardMessage, SecurityEvent, ThreatAlert, AgentCommand};
+use secureguard_shared::{
+    AgentCommand, AgentMessage, DashboardMessage, SecurityEvent, ThreatAlert,
+};
 
 #[derive(Clone)]
 pub struct MessageRouter {
@@ -37,7 +39,10 @@ impl MessageRouter {
         event: &SecurityEvent,
         agent_name: &str,
     ) -> Result<(), String> {
-        info!("Routing security event {} from agent {}", event.event_type, agent_id);
+        info!(
+            "Routing security event {} from agent {}",
+            event.event_type, agent_id
+        );
 
         // Send to all dashboard connections
         let dashboard_message = DashboardMessage::NewSecurityEvent {
@@ -62,7 +67,10 @@ impl MessageRouter {
         agent_name: &str,
         event_title: &str,
     ) -> Result<(), String> {
-        info!("Routing threat alert {} for agent {}", alert.alert_type, alert.agent_id);
+        info!(
+            "Routing threat alert {} for agent {}",
+            alert.alert_type, alert.agent_id
+        );
 
         // Send to all dashboard connections
         let dashboard_message = DashboardMessage::NewThreatAlert {
@@ -98,7 +106,10 @@ impl MessageRouter {
             .send_to_all_dashboards(&dashboard_message)
             .await?;
 
-        info!("Routed agent status update for agent {}: {:?}", agent_id, status);
+        info!(
+            "Routed agent status update for agent {}: {:?}",
+            agent_id, status
+        );
         Ok(())
     }
 
@@ -108,7 +119,10 @@ impl MessageRouter {
         agent_id: Uuid,
         command: &AgentCommand,
     ) -> Result<(), String> {
-        info!("Routing command {} to agent {}", command.command_type, agent_id);
+        info!(
+            "Routing command {} to agent {}",
+            command.command_type, agent_id
+        );
 
         let agent_message = AgentMessage::Command {
             command_id: command.command_id,
@@ -193,7 +207,7 @@ impl MessageRouter {
         let mut subscribers = self.event_subscribers.write().await;
         let initial_len = subscribers.len();
         subscribers.retain(|s| s.id != subscriber_id);
-        
+
         let removed = subscribers.len() < initial_len;
         if removed {
             info!("Removed subscriber {}", subscriber_id);
@@ -240,27 +254,31 @@ impl MessageRouter {
     pub async fn get_connection_stats(&self) -> (usize, usize, Vec<Uuid>) {
         let (agent_count, dashboard_count) = self.connection_manager.get_connection_count().await;
         let connected_agents = self.connection_manager.get_connected_agents().await;
-        
+
         (agent_count, dashboard_count, connected_agents)
     }
 
     // Private helper methods
     async fn process_event_subscribers(&self, event: &SecurityEvent) {
         let subscribers = self.event_subscribers.read().await;
-        
+
         for subscriber in subscribers.iter() {
             if let Some(handler) = &subscriber.event_handler {
-                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    handler(event)
-                })) {
+                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| handler(event))) {
                     Ok(true) => {
-                        info!("Event subscriber {} processed event {}", subscriber.name, event.event_id);
+                        info!(
+                            "Event subscriber {} processed event {}",
+                            subscriber.name, event.event_id
+                        );
                     }
                     Ok(false) => {
                         // Handler indicated it doesn't want to process this event
                     }
                     Err(_) => {
-                        error!("Event subscriber {} panicked processing event {}", subscriber.name, event.event_id);
+                        error!(
+                            "Event subscriber {} panicked processing event {}",
+                            subscriber.name, event.event_id
+                        );
                     }
                 }
             }
@@ -269,20 +287,24 @@ impl MessageRouter {
 
     async fn process_alert_subscribers(&self, alert: &ThreatAlert) {
         let subscribers = self.event_subscribers.read().await;
-        
+
         for subscriber in subscribers.iter() {
             if let Some(handler) = &subscriber.alert_handler {
-                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    handler(alert)
-                })) {
+                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| handler(alert))) {
                     Ok(true) => {
-                        info!("Alert subscriber {} processed alert {}", subscriber.name, alert.alert_id);
+                        info!(
+                            "Alert subscriber {} processed alert {}",
+                            subscriber.name, alert.alert_id
+                        );
                     }
                     Ok(false) => {
                         // Handler indicated it doesn't want to process this alert
                     }
                     Err(_) => {
-                        error!("Alert subscriber {} panicked processing alert {}", subscriber.name, alert.alert_id);
+                        error!(
+                            "Alert subscriber {} panicked processing alert {}",
+                            subscriber.name, alert.alert_id
+                        );
                     }
                 }
             }
@@ -294,20 +316,19 @@ impl MessageRouter {
 impl MessageRouter {
     pub async fn setup_default_subscribers(&self) {
         // High-severity event logger
-        self.add_event_subscriber(
-            "HighSeverityLogger".to_string(),
-            |event| {
-                matches!(event.severity, secureguard_shared::Severity::High | secureguard_shared::Severity::Critical)
-            }
-        ).await;
+        self.add_event_subscriber("HighSeverityLogger".to_string(), |event| {
+            matches!(
+                event.severity,
+                secureguard_shared::Severity::High | secureguard_shared::Severity::Critical
+            )
+        })
+        .await;
 
         // Critical alert notifier
-        self.add_alert_subscriber(
-            "CriticalAlertNotifier".to_string(),
-            |alert| {
-                matches!(alert.severity, secureguard_shared::Severity::Critical)
-            }
-        ).await;
+        self.add_alert_subscriber("CriticalAlertNotifier".to_string(), |alert| {
+            matches!(alert.severity, secureguard_shared::Severity::Critical)
+        })
+        .await;
 
         info!("Set up default message router subscribers");
     }

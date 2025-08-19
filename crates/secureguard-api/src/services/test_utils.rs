@@ -1,5 +1,5 @@
-use sqlx::{PgPool, Row};
 use crate::database::Database;
+use sqlx::{PgPool, Row};
 use std::env;
 
 pub struct TestDatabase {
@@ -9,9 +9,10 @@ pub struct TestDatabase {
 
 impl TestDatabase {
     pub async fn new() -> Self {
-        let database_url = env::var("DATABASE_URL_TEST")
-            .unwrap_or_else(|_| "postgresql://secureguard:password@localhost:5432/secureguard_test".to_string());
-        
+        let database_url = env::var("DATABASE_URL_TEST").unwrap_or_else(|_| {
+            "postgresql://secureguard:password@localhost:5432/secureguard_test".to_string()
+        });
+
         let pool = sqlx::postgres::PgPoolOptions::new()
             .max_connections(1)
             .connect(&database_url)
@@ -39,11 +40,11 @@ impl TestDatabase {
         let _ = sqlx::query("TRUNCATE agents.endpoints RESTART IDENTITY CASCADE")
             .execute(pool)
             .await;
-        
+
         let _ = sqlx::query("TRUNCATE users.users RESTART IDENTITY CASCADE")
             .execute(pool)
             .await;
-        
+
         let _ = sqlx::query("TRUNCATE tenants.tenants RESTART IDENTITY CASCADE")
             .execute(pool)
             .await;

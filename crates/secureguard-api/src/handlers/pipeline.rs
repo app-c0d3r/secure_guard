@@ -1,5 +1,5 @@
 use axum::{
-    extract::{State, Query},
+    extract::{Query, State},
     http::StatusCode,
     Json,
 };
@@ -8,8 +8,8 @@ use uuid::Uuid;
 
 use crate::{
     database::Database,
-    services::processing_pipeline::{ProcessingPipeline, PipelineHealth},
     middleware::auth::AuthUser,
+    services::processing_pipeline::{PipelineHealth, ProcessingPipeline},
 };
 use secureguard_shared::{CreateSecurityEventRequest, SecureGuardError};
 
@@ -64,8 +64,9 @@ pub async fn get_pipeline_status(
         }
     });
 
-    let uptime_formatted = format!("{}h {}m", 
-        mock_health.uptime_seconds / 3600, 
+    let uptime_formatted = format!(
+        "{}h {}m",
+        mock_health.uptime_seconds / 3600,
         (mock_health.uptime_seconds % 3600) / 60
     );
 
@@ -121,14 +122,14 @@ pub async fn process_events_batch(
     if request.events.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "No events provided in batch"}))
+            Json(serde_json::json!({"error": "No events provided in batch"})),
         ));
     }
 
     if request.events.len() > 1000 {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "Batch size too large (max 1000 events)"}))
+            Json(serde_json::json!({"error": "Batch size too large (max 1000 events)"})),
         ));
     }
 
@@ -178,7 +179,7 @@ pub async fn emergency_isolate_agents(
     if request.affected_agents.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "No agents specified for isolation"}))
+            Json(serde_json::json!({"error": "No agents specified for isolation"})),
         ));
     }
 
@@ -367,8 +368,14 @@ pub async fn get_processing_history(
 fn handle_error(error: SecureGuardError) -> (StatusCode, Json<serde_json::Value>) {
     let (status, message) = match error {
         SecureGuardError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg),
-        SecureGuardError::DatabaseError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string()),
-        _ => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string()),
+        SecureGuardError::DatabaseError(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Database error".to_string(),
+        ),
+        _ => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal server error".to_string(),
+        ),
     };
 
     (status, Json(serde_json::json!({ "error": message })))

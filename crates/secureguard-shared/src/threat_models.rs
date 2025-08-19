@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use sqlx::Type;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "varchar", rename_all = "lowercase")]
@@ -194,7 +194,7 @@ pub enum AgentMessage {
         network_connections: u32,
         running_processes: u32,
     },
-    
+
     // Server to Agent
     Command {
         command_id: Uuid,
@@ -203,7 +203,7 @@ pub enum AgentMessage {
     },
     ConfigUpdate(serde_json::Value),
     RuleUpdate(Vec<DetectionRule>),
-    
+
     // Bidirectional Protocol Messages
     RegistrationConfirmed {
         agent_id: Uuid,

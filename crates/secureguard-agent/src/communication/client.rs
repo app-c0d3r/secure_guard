@@ -1,6 +1,6 @@
-use anyhow::Result;
-use crate::utils::config::Config;
 use crate::communication::messages::{AgentMessage, ServerMessage};
+use crate::utils::config::Config;
+use anyhow::Result;
 
 /// Communication client for connecting to SecureGuard backend
 pub struct Client {

@@ -1,9 +1,12 @@
-use sqlx::PgPool;
-use uuid::Uuid;
-use chrono::Utc;
-use secureguard_shared::{Agent, AgentStatus, RegisterAgentRequest, RegisterAgentWithTokenRequest, HeartbeatRequest, SecureGuardError, Result};
 use super::api_key_service::ApiKeyService;
 use super::subscription_service::SubscriptionService;
+use chrono::Utc;
+use secureguard_shared::{
+    Agent, AgentStatus, HeartbeatRequest, RegisterAgentRequest, RegisterAgentWithTokenRequest,
+    Result, SecureGuardError,
+};
+use sqlx::PgPool;
+use uuid::Uuid;
 
 pub struct AgentService {
     pool: PgPool,
@@ -15,7 +18,7 @@ impl AgentService {
     pub fn new(pool: PgPool) -> Self {
         let api_key_service = ApiKeyService::new(pool.clone());
         let subscription_service = SubscriptionService::new(pool.clone());
-        Self { 
+        Self {
             pool,
             api_key_service,
             subscription_service,
@@ -23,12 +26,21 @@ impl AgentService {
     }
 
     /// Register agent using API key (new method)
-    pub async fn register_agent_with_api_key(&self, request: RegisterAgentRequest) -> Result<Agent> {
+    pub async fn register_agent_with_api_key(
+        &self,
+        request: RegisterAgentRequest,
+    ) -> Result<Agent> {
         // Validate API key and get user info
-        let (user_id, key_id) = self.api_key_service.validate_api_key(&request.api_key).await?;
+        let (user_id, key_id) = self
+            .api_key_service
+            .validate_api_key(&request.api_key)
+            .await?;
 
         // Check subscription limits BEFORE registration
-        let device_limit_check = self.subscription_service.can_register_device(user_id).await?;
+        let device_limit_check = self
+            .subscription_service
+            .can_register_device(user_id)
+            .await?;
         if !device_limit_check.allowed {
             return Err(SecureGuardError::SubscriptionLimitExceeded(
                 format!("Device registration failed: {}. Please upgrade your subscription to register more devices.", 
@@ -37,9 +49,12 @@ impl AgentService {
         }
 
         // Validate required fields
-        if request.hardware_fingerprint.is_empty() || request.version.is_empty() || request.device_name.is_empty() {
+        if request.hardware_fingerprint.is_empty()
+            || request.version.is_empty()
+            || request.device_name.is_empty()
+        {
             return Err(SecureGuardError::ValidationError(
-                "Hardware fingerprint, version, and device name are required".to_string()
+                "Hardware fingerprint, version, and device name are required".to_string(),
             ));
         }
 
@@ -54,7 +69,7 @@ impl AgentService {
 
         if existing.is_some() {
             return Err(SecureGuardError::ValidationError(
-                "Agent with this hardware fingerprint already exists".to_string()
+                "Agent with this hardware fingerprint already exists".to_string(),
             ));
         }
 
@@ -68,7 +83,9 @@ impl AgentService {
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
         // For now, use a default tenant if user doesn't have one
-        let tenant_id = user_tenant.and_then(|t| t.tenant_id).unwrap_or_else(|| Uuid::new_v4());
+        let tenant_id = user_tenant
+            .and_then(|t| t.tenant_id)
+            .unwrap_or_else(|| Uuid::new_v4());
 
         // Insert new agent
         let agent = sqlx::query_as!(
@@ -98,7 +115,11 @@ impl AgentService {
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
         // Increment device count in subscription tracking
-        if let Err(e) = self.subscription_service.increment_device_count(user_id).await {
+        if let Err(e) = self
+            .subscription_service
+            .increment_device_count(user_id)
+            .await
+        {
             // Log the error but don't fail registration - device is already created
             tracing::warn!("Failed to update device count for user {}: {}", user_id, e);
         }
@@ -107,12 +128,21 @@ impl AgentService {
     }
 
     /// Register agent using one-time token
-    pub async fn register_agent_with_token(&self, request: RegisterAgentWithTokenRequest) -> Result<Agent> {
+    pub async fn register_agent_with_token(
+        &self,
+        request: RegisterAgentWithTokenRequest,
+    ) -> Result<Agent> {
         // Validate and consume token
-        let (user_id, device_name) = self.api_key_service.validate_and_consume_token(&request.registration_token).await?;
+        let (user_id, device_name) = self
+            .api_key_service
+            .validate_and_consume_token(&request.registration_token)
+            .await?;
 
         // Check subscription limits BEFORE registration
-        let device_limit_check = self.subscription_service.can_register_device(user_id).await?;
+        let device_limit_check = self
+            .subscription_service
+            .can_register_device(user_id)
+            .await?;
         if !device_limit_check.allowed {
             return Err(SecureGuardError::SubscriptionLimitExceeded(
                 format!("Device registration failed: {}. Please upgrade your subscription to register more devices.", 
@@ -123,7 +153,7 @@ impl AgentService {
         // Validate required fields
         if request.hardware_fingerprint.is_empty() || request.version.is_empty() {
             return Err(SecureGuardError::ValidationError(
-                "Hardware fingerprint and version are required".to_string()
+                "Hardware fingerprint and version are required".to_string(),
             ));
         }
 
@@ -138,7 +168,7 @@ impl AgentService {
 
         if existing.is_some() {
             return Err(SecureGuardError::ValidationError(
-                "Agent with this hardware fingerprint already exists".to_string()
+                "Agent with this hardware fingerprint already exists".to_string(),
             ));
         }
 
@@ -151,7 +181,9 @@ impl AgentService {
         .await
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
-        let tenant_id = user_tenant.and_then(|t| t.tenant_id).unwrap_or_else(|| Uuid::new_v4());
+        let tenant_id = user_tenant
+            .and_then(|t| t.tenant_id)
+            .unwrap_or_else(|| Uuid::new_v4());
 
         // Insert new agent
         let agent = sqlx::query_as!(
@@ -180,7 +212,11 @@ impl AgentService {
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
         // Increment device count in subscription tracking
-        if let Err(e) = self.subscription_service.increment_device_count(user_id).await {
+        if let Err(e) = self
+            .subscription_service
+            .increment_device_count(user_id)
+            .await
+        {
             // Log the error but don't fail registration - device is already created
             tracing::warn!("Failed to update device count for user {}: {}", user_id, e);
         }
@@ -189,7 +225,11 @@ impl AgentService {
     }
 
     /// Legacy method - kept for backward compatibility
-    pub async fn register_agent(&self, tenant_id: Uuid, request: RegisterAgentRequest) -> Result<Agent> {
+    pub async fn register_agent(
+        &self,
+        tenant_id: Uuid,
+        request: RegisterAgentRequest,
+    ) -> Result<Agent> {
         return self.register_agent_with_api_key(request).await;
     }
 

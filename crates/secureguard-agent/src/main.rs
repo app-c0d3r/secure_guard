@@ -1,6 +1,6 @@
 use anyhow::Result;
 use tokio::signal;
-use tracing::{info, error};
+use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod agent;

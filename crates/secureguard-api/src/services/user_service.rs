@@ -1,9 +1,9 @@
+use crate::services::auth_service::AuthService;
+use chrono::{Duration, Utc};
+use secureguard_shared::{CreateUserRequest, Result, SecureGuardError, User};
+use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
-use chrono::{Utc, Duration};
-use serde_json::Value;
-use secureguard_shared::{User, CreateUserRequest, SecureGuardError, Result};
-use crate::services::auth_service::AuthService;
 
 pub struct UserService {
     pool: PgPool,
@@ -18,7 +18,7 @@ impl UserService {
     pub async fn create_user(&self, request: CreateUserRequest) -> Result<User> {
         if request.username.is_empty() || request.email.is_empty() || request.password.len() < 8 {
             return Err(SecureGuardError::ValidationError(
-                "Invalid username, email, or password too short".to_string()
+                "Invalid username, email, or password too short".to_string(),
             ));
         }
 
@@ -94,13 +94,17 @@ impl UserService {
             if let Some(locked_until) = row.account_locked_until {
                 if locked_until > now {
                     return Err(SecureGuardError::ValidationError(
-                        "Account is temporarily locked due to too many failed login attempts".to_string()
+                        "Account is temporarily locked due to too many failed login attempts"
+                            .to_string(),
                     ));
                 }
             }
 
             // Verify password
-            if self.auth_service.verify_password(password, &row.password_hash)? {
+            if self
+                .auth_service
+                .verify_password(password, &row.password_hash)?
+            {
                 // Handle successful login
                 sqlx::query!("SELECT users.handle_successful_login($1)", username)
                     .execute(&self.pool)
@@ -139,11 +143,16 @@ impl UserService {
         Ok(result.map(|r| r.must_change_password).unwrap_or(false))
     }
 
-    pub async fn change_password(&self, user_id: Uuid, old_password: &str, new_password: &str) -> Result<()> {
+    pub async fn change_password(
+        &self,
+        user_id: Uuid,
+        old_password: &str,
+        new_password: &str,
+    ) -> Result<()> {
         // Validate password strength
         if !self.validate_password_strength(new_password).await? {
             return Err(SecureGuardError::ValidationError(
-                "Password does not meet security requirements".to_string()
+                "Password does not meet security requirements".to_string(),
             ));
         }
 
@@ -158,18 +167,23 @@ impl UserService {
         .ok_or(SecureGuardError::UserNotFound)?;
 
         // Verify old password
-        if !self.auth_service.verify_password(old_password, &user_data.password_hash)? {
+        if !self
+            .auth_service
+            .verify_password(old_password, &user_data.password_hash)?
+        {
             return Err(SecureGuardError::AuthenticationFailed);
         }
 
         // Check password history
-        let history: Vec<String> = serde_json::from_value(user_data.password_history.unwrap_or(Value::Array(vec![])))
-            .unwrap_or_default();
-        
+        let history: Vec<String> =
+            serde_json::from_value(user_data.password_history.unwrap_or(Value::Array(vec![])))
+                .unwrap_or_default();
+
         for old_hash in &history {
             if self.auth_service.verify_password(new_password, old_hash)? {
                 return Err(SecureGuardError::ValidationError(
-                    "Password has been used recently. Please choose a different password".to_string()
+                    "Password has been used recently. Please choose a different password"
+                        .to_string(),
                 ));
             }
         }
@@ -291,7 +305,7 @@ impl UserService {
         // Validate password strength
         if !self.validate_password_strength(new_password).await? {
             return Err(SecureGuardError::ValidationError(
-                "Password does not meet security requirements".to_string()
+                "Password does not meet security requirements".to_string(),
             ));
         }
 
@@ -308,16 +322,20 @@ impl UserService {
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?
-        .ok_or(SecureGuardError::ValidationError("Invalid or expired reset token".to_string()))?;
+        .ok_or(SecureGuardError::ValidationError(
+            "Invalid or expired reset token".to_string(),
+        ))?;
 
         // Check password history
-        let history: Vec<String> = serde_json::from_value(reset_data.password_history.unwrap_or(Value::Array(vec![])))
-            .unwrap_or_default();
-        
+        let history: Vec<String> =
+            serde_json::from_value(reset_data.password_history.unwrap_or(Value::Array(vec![])))
+                .unwrap_or_default();
+
         for old_hash in &history {
             if self.auth_service.verify_password(new_password, old_hash)? {
                 return Err(SecureGuardError::ValidationError(
-                    "Password has been used recently. Please choose a different password".to_string()
+                    "Password has been used recently. Please choose a different password"
+                        .to_string(),
                 ));
             }
         }
@@ -326,7 +344,10 @@ impl UserService {
         let new_hash = self.auth_service.hash_password(new_password)?;
 
         // Update user password and mark token as used
-        let mut tx = self.pool.begin().await
+        let mut tx = self
+            .pool
+            .begin()
+            .await
             .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
         sqlx::query!(
@@ -353,7 +374,8 @@ impl UserService {
         .await
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
-        tx.commit().await
+        tx.commit()
+            .await
             .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
         Ok(())

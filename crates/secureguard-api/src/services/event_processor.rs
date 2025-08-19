@@ -1,17 +1,16 @@
+use sqlx::PgPool;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{RwLock, mpsc, Semaphore};
+use tokio::sync::{mpsc, RwLock, Semaphore};
 use tokio::time;
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
-use sqlx::PgPool;
-use tracing::{info, warn, error, debug};
 
-use crate::services::{threat_service::ThreatService, realtime_service::RealtimeService};
+use crate::services::{realtime_service::RealtimeService, threat_service::ThreatService};
 use secureguard_shared::{
-    SecurityEvent, CreateSecurityEventRequest, ThreatAlert, AgentCommand,
-    Severity, AlertStatus, CommandStatus, 
-    SecureGuardError, Result
+    AgentCommand, AlertStatus, CommandStatus, CreateSecurityEventRequest, Result, SecureGuardError,
+    SecurityEvent, Severity, ThreatAlert,
 };
 
 // Event processing statistics
@@ -70,18 +69,18 @@ pub struct EventProcessor {
     threat_service: Arc<ThreatService>,
     realtime_service: Arc<RealtimeService>,
     config: PipelineConfig,
-    
+
     // Processing queues
     high_priority_queue: Arc<RwLock<VecDeque<(Uuid, CreateSecurityEventRequest, Instant)>>>,
     normal_priority_queue: Arc<RwLock<VecDeque<(Uuid, CreateSecurityEventRequest, Instant)>>>,
-    
+
     // Correlation engine
     active_correlations: Arc<RwLock<HashMap<String, EventCorrelation>>>,
     correlation_patterns: Arc<RwLock<Vec<CorrelationPattern>>>,
-    
+
     // Statistics and monitoring
     stats: Arc<RwLock<ProcessingStats>>,
-    
+
     // Concurrency control
     processing_semaphore: Arc<Semaphore>,
 }
@@ -127,15 +126,17 @@ impl EventProcessor {
     pub async fn initialize(&self) -> Result<()> {
         // Load default correlation patterns
         self.load_default_patterns().await;
-        
+
         // Start background processing tasks
         self.start_processing_workers().await;
         self.start_correlation_engine().await;
         self.start_stats_collector().await;
         self.start_queue_monitor().await;
-        
-        info!("Event processor initialized with {} correlation patterns", 
-              self.correlation_patterns.read().await.len());
+
+        info!(
+            "Event processor initialized with {} correlation patterns",
+            self.correlation_patterns.read().await.len()
+        );
         Ok(())
     }
 
@@ -146,18 +147,18 @@ impl EventProcessor {
         event_request: CreateSecurityEventRequest,
     ) -> Result<()> {
         let enqueue_time = Instant::now();
-        
+
         // Check queue capacity
         let total_queue_size = self.get_total_queue_size().await;
         if total_queue_size >= self.config.max_queue_size {
             return Err(SecureGuardError::ValidationError(
-                "Event processing queue is full".to_string()
+                "Event processing queue is full".to_string(),
             ));
         }
 
         // Determine priority based on severity
         let is_high_priority = self.is_high_priority(&event_request);
-        
+
         if is_high_priority {
             let mut queue = self.high_priority_queue.write().await;
             queue.push_back((agent_id, event_request, enqueue_time));
@@ -198,15 +199,17 @@ impl EventProcessor {
             let mut queue = self.high_priority_queue.write().await;
             queue.extend(high_priority_batch);
         }
-        
+
         if !normal_priority_batch.is_empty() {
             let mut queue = self.normal_priority_queue.write().await;
             queue.extend(normal_priority_batch);
         }
 
-        info!("Batch queued {} events for processing", 
-              high_priority_count + normal_priority_count);
-        
+        info!(
+            "Batch queued {} events for processing",
+            high_priority_count + normal_priority_count
+        );
+
         Ok(())
     }
 
@@ -258,10 +261,10 @@ impl EventProcessor {
 
     async fn high_priority_worker(&self) {
         let mut interval = time::interval(Duration::from_millis(10)); // 100 Hz processing
-        
+
         loop {
             interval.tick().await;
-            
+
             // Process high-priority events first
             while let Some((agent_id, event_request, enqueue_time)) = {
                 let mut queue = self.high_priority_queue.write().await;
@@ -271,15 +274,26 @@ impl EventProcessor {
                     let processor = self.clone();
                     tokio::spawn(async move {
                         let processing_start = Instant::now();
-                        
-                        match processor.process_single_event(agent_id, event_request).await {
+
+                        match processor
+                            .process_single_event(agent_id, event_request)
+                            .await
+                        {
                             Ok(event) => {
                                 let latency = processing_start.elapsed();
-                                processor.update_stats(latency, enqueue_time.elapsed()).await;
-                                debug!("Processed high-priority event {} in {:?}", event.event_id, latency);
+                                processor
+                                    .update_stats(latency, enqueue_time.elapsed())
+                                    .await;
+                                debug!(
+                                    "Processed high-priority event {} in {:?}",
+                                    event.event_id, latency
+                                );
                             }
                             Err(e) => {
-                                error!("Failed to process high-priority event from agent {}: {}", agent_id, e);
+                                error!(
+                                    "Failed to process high-priority event from agent {}: {}",
+                                    agent_id, e
+                                );
                             }
                         }
                     });
@@ -295,10 +309,10 @@ impl EventProcessor {
 
     async fn normal_priority_worker(&self) {
         let mut interval = time::interval(Duration::from_millis(50)); // 20 Hz processing
-        
+
         loop {
             interval.tick().await;
-            
+
             // Process normal-priority events in batches
             let batch: Vec<_> = {
                 let mut queue = self.normal_priority_queue.write().await;
@@ -330,7 +344,8 @@ impl EventProcessor {
         event_request: CreateSecurityEventRequest,
     ) -> Result<SecurityEvent> {
         // Process through realtime service (which includes threat detection)
-        let event = self.realtime_service
+        let event = self
+            .realtime_service
             .process_security_event(agent_id, event_request)
             .await?;
 
@@ -346,31 +361,36 @@ impl EventProcessor {
         Ok(event)
     }
 
-    async fn process_event_batch(
-        &self,
-        batch: Vec<(Uuid, CreateSecurityEventRequest, Instant)>,
-    ) {
+    async fn process_event_batch(&self, batch: Vec<(Uuid, CreateSecurityEventRequest, Instant)>) {
         let batch_start = Instant::now();
         let batch_size = batch.len();
-        
+
         for (agent_id, event_request, enqueue_time) in batch {
             match self.process_single_event(agent_id, event_request).await {
                 Ok(_) => {
-                    self.update_stats(batch_start.elapsed(), enqueue_time.elapsed()).await;
+                    self.update_stats(batch_start.elapsed(), enqueue_time.elapsed())
+                        .await;
                 }
                 Err(e) => {
-                    error!("Failed to process batch event from agent {}: {}", agent_id, e);
+                    error!(
+                        "Failed to process batch event from agent {}: {}",
+                        agent_id, e
+                    );
                 }
             }
         }
 
-        debug!("Processed batch of {} events in {:?}", batch_size, batch_start.elapsed());
+        debug!(
+            "Processed batch of {} events in {:?}",
+            batch_size,
+            batch_start.elapsed()
+        );
     }
 
     async fn update_stats(&self, processing_latency: Duration, queue_latency: Duration) {
         let mut stats = self.stats.write().await;
         stats.processing_latency_ms = processing_latency.as_millis() as f64;
-        
+
         // Simple moving average for events per second
         let current_eps = 1000.0 / (processing_latency.as_millis().max(1) as f64);
         stats.events_per_second = (stats.events_per_second * 0.9) + (current_eps * 0.1);
@@ -386,7 +406,7 @@ impl EventProcessor {
 
     async fn correlation_worker(&self) {
         let mut interval = time::interval(Duration::from_secs(30)); // Check correlations every 30 seconds
-        
+
         loop {
             interval.tick().await;
             self.process_correlations().await;
@@ -397,19 +417,22 @@ impl EventProcessor {
     async fn feed_correlation_engine(&self, event: &SecurityEvent) {
         // This is a simplified correlation feed - in production this would be much more sophisticated
         let correlation_key = format!("{}_{}", event.event_type, event.severity.clone() as i32);
-        
+
         let mut correlations = self.active_correlations.write().await;
-        
+
         if let Some(correlation) = correlations.get_mut(&correlation_key) {
             // Update existing correlation
             correlation.agent_ids.push(event.agent_id);
             correlation.last_seen = event.occurred_at;
             correlation.event_count += 1;
-            
+
             // Increase confidence based on multiple agents
-            let unique_agents = correlation.agent_ids.iter().collect::<std::collections::HashSet<_>>().len();
+            let unique_agents = correlation
+                .agent_ids
+                .iter()
+                .collect::<std::collections::HashSet<_>>()
+                .len();
             correlation.pattern_confidence = (unique_agents as f32 / 10.0).min(1.0);
-            
         } else {
             // Create new correlation
             let correlation = EventCorrelation {
@@ -422,52 +445,60 @@ impl EventProcessor {
                 event_count: 1,
                 pattern_confidence: 0.1,
             };
-            
+
             correlations.insert(correlation_key, correlation);
         }
     }
 
     async fn process_correlations(&self) {
         let correlations = self.active_correlations.read().await;
-        
+
         for (key, correlation) in correlations.iter() {
             // Check if correlation meets alert criteria
             if correlation.pattern_confidence > 0.7 && correlation.event_count > 5 {
                 // Generate correlated threat alert
                 self.generate_correlation_alert(correlation).await;
-                
+
                 let mut stats = self.stats.write().await;
                 stats.correlation_hits += 1;
-                
-                info!("Generated correlation alert for pattern: {} (confidence: {:.2})", 
-                      key, correlation.pattern_confidence);
+
+                info!(
+                    "Generated correlation alert for pattern: {} (confidence: {:.2})",
+                    key, correlation.pattern_confidence
+                );
             }
         }
     }
 
     async fn generate_correlation_alert(&self, correlation: &EventCorrelation) {
         // This would create a high-priority threat alert based on the correlation
-        if let Err(e) = self.realtime_service.broadcast_emergency_alert(
-            "Multi-Agent Threat Correlation",
-            &format!("Detected coordinated threat activity across {} agents: {} events of type {:?}",
-                correlation.agent_ids.len(),
-                correlation.event_count,
-                correlation.event_types
-            ),
-            correlation.severity_level.clone(),
-            correlation.agent_ids.clone(),
-        ).await {
+        if let Err(e) = self
+            .realtime_service
+            .broadcast_emergency_alert(
+                "Multi-Agent Threat Correlation",
+                &format!(
+                    "Detected coordinated threat activity across {} agents: {} events of type {:?}",
+                    correlation.agent_ids.len(),
+                    correlation.event_count,
+                    correlation.event_types
+                ),
+                correlation.severity_level.clone(),
+                correlation.agent_ids.clone(),
+            )
+            .await
+        {
             error!("Failed to broadcast correlation alert: {}", e);
         }
     }
 
     async fn cleanup_old_correlations(&self) {
-        let cutoff = chrono::Utc::now() - chrono::Duration::seconds(self.config.correlation_window_seconds as i64);
+        let cutoff = chrono::Utc::now()
+            - chrono::Duration::seconds(self.config.correlation_window_seconds as i64);
         let mut correlations = self.active_correlations.write().await;
-        
+
         let initial_count = correlations.len();
         correlations.retain(|_, correlation| correlation.last_seen > cutoff);
-        
+
         let removed = initial_count - correlations.len();
         if removed > 0 {
             debug!("Cleaned up {} old correlations", removed);
@@ -481,7 +512,11 @@ impl EventProcessor {
                 pattern_id: "lateral_movement".to_string(),
                 name: "Lateral Movement Detection".to_string(),
                 description: "Detects lateral movement attempts across multiple agents".to_string(),
-                event_sequence: vec!["authentication".to_string(), "process_creation".to_string(), "network_connection".to_string()],
+                event_sequence: vec![
+                    "authentication".to_string(),
+                    "process_creation".to_string(),
+                    "network_connection".to_string(),
+                ],
                 max_time_window: Duration::from_secs(600), // 10 minutes
                 min_agents: 2,
                 confidence_threshold: 0.8,
@@ -490,7 +525,8 @@ impl EventProcessor {
             CorrelationPattern {
                 pattern_id: "mass_file_encryption".to_string(),
                 name: "Ransomware Activity".to_string(),
-                description: "Detects potential ransomware through mass file modifications".to_string(),
+                description: "Detects potential ransomware through mass file modifications"
+                    .to_string(),
                 event_sequence: vec!["file_access".to_string(), "file_modification".to_string()],
                 max_time_window: Duration::from_secs(300), // 5 minutes
                 min_agents: 1,
@@ -500,7 +536,8 @@ impl EventProcessor {
             CorrelationPattern {
                 pattern_id: "data_exfiltration".to_string(),
                 name: "Data Exfiltration Detection".to_string(),
-                description: "Detects potential data exfiltration through network patterns".to_string(),
+                description: "Detects potential data exfiltration through network patterns"
+                    .to_string(),
                 event_sequence: vec!["file_access".to_string(), "network_connection".to_string()],
                 max_time_window: Duration::from_secs(180), // 3 minutes
                 min_agents: 1,
@@ -518,11 +555,11 @@ impl EventProcessor {
         let processor_clone = self.clone();
         tokio::spawn(async move {
             let mut interval = time::interval(Duration::from_secs(10));
-            
+
             loop {
                 interval.tick().await;
                 let stats = processor_clone.get_stats().await;
-                
+
                 info!("Event Processor Stats: {} events/sec, {} queue depth, {:.2}ms latency, {} correlations",
                       stats.events_per_second as u32,
                       stats.queue_depth,
@@ -537,14 +574,16 @@ impl EventProcessor {
         let processor_clone = self.clone();
         tokio::spawn(async move {
             let mut interval = time::interval(Duration::from_secs(60));
-            
+
             loop {
                 interval.tick().await;
                 let queue_size = processor_clone.get_total_queue_size().await;
-                
+
                 if queue_size > processor_clone.config.max_queue_size / 2 {
-                    warn!("Event processing queue is getting full: {}/{}", 
-                          queue_size, processor_clone.config.max_queue_size);
+                    warn!(
+                        "Event processing queue is getting full: {}/{}",
+                        queue_size, processor_clone.config.max_queue_size
+                    );
                 }
             }
         });

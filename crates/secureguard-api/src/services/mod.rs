@@ -1,13 +1,13 @@
-pub mod user_service;
+pub mod agent_communication;
 pub mod agent_service;
-pub mod auth_service;
-pub mod threat_service;
 pub mod api_key_service;
-pub mod subscription_service;
-pub mod realtime_service;
+pub mod auth_service;
 pub mod event_processor;
 pub mod processing_pipeline;
-pub mod agent_communication;
+pub mod realtime_service;
+pub mod subscription_service;
+pub mod threat_service;
+pub mod user_service;
 // pub mod config_service;  // Temporarily disabled due to compilation errors
 // pub mod remote_command_service;  // Temporarily disabled
 // pub mod security_monitoring_service;  // Temporarily disabled due to bigdecimal dependency
