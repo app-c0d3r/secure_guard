@@ -5,7 +5,7 @@ A cloud-native cybersecurity platform with lightweight agent-based threat detect
 ## 🚀 Current Status: Production-Ready Full-Stack Application ✅
 
 ### ✅ Completed Features
-- **Backend API**: Complete Rust + Axum REST server with 7+ endpoints (✅ Compiles without errors)
+- **Backend API**: Complete Rust + Axum REST server with 10+ endpoints (✅ Compiles without errors)
 - **Professional Web Interface**: React + Vite + TypeScript with comprehensive admin features (✅ All TypeScript errors resolved)
 - **Modern Theme System**: Dark/light mode with smooth transitions and system detection (✅ Fully functional)
 - **Asset Management**: Comprehensive agent control with pause/resume/stop/restart functionality (✅ Complete implementation)
@@ -15,6 +15,8 @@ A cloud-native cybersecurity platform with lightweight agent-based threat detect
 - **Professional Deployment**: Three installer formats (MSI, EXE, PowerShell) (✅ Ready)
 - **Enterprise Ready**: Group Policy, SCCM, automated deployment support (✅ Configured)
 - **Authentication**: JWT tokens with Argon2 password hashing + progressive lockout protection (✅ Secure)
+- **Password Security System**: Comprehensive password policies, change requirements, and account lockout (✅ Production-ready)
+- **Secure Admin Defaults**: Random password generation with mandatory first-login change (✅ Implemented)
 - **Database**: PostgreSQL with comprehensive schema and migrations (✅ Working with SQLx)
 - **Security**: Multi-layer authentication, encryption, audit logging, real-time monitoring (✅ Complete)
 - **Full-Stack Integration**: Frontend and backend servers running simultaneously (✅ Production environment ready)
@@ -59,7 +61,8 @@ A cloud-native cybersecurity platform with lightweight agent-based threat detect
    - **Production**: http://localhost:3002 (Production build via `.\scripts\myservice.bat start prod`)
    - **Development**: http://localhost:3000 (Vite dev server via `npm run dev`)
    - **Backend API**: http://localhost:3000/api/v1/health (Rust API server)
-   - **Demo Login**: admin@company.com / SecurePass123!
+   - **Demo Login (Dev Only)**: admin@company.com / SecurePass123! (Only available in development mode)
+   - **Production Admin**: Random secure password generated during database migration (must be changed on first login)
    - **Theme Switcher**: Available in header navigation (dark/light mode)
 
 ## 📁 Project Structure
@@ -187,6 +190,9 @@ SecureGuard features a modern, responsive web interface built with the latest fr
 - `POST /api/v1/auth/register` - User registration
 - `POST /api/v1/auth/login` - User login
 - `GET /api/v1/auth/me` - Get current user
+- `POST /api/v1/auth/change-password` - Change user password
+- `GET /api/v1/auth/password-policy` - Get password policy settings
+- `GET /api/v1/auth/must-change-password` - Check if password change is required
 
 ### Agent Management  
 - `POST /api/v1/agents/register` - Register new agent
@@ -327,6 +333,15 @@ System Admin (additional):
 - **Secure by Default**: Safe defaults, explicit security configurations  
 - **Privacy First**: Minimal data collection, GDPR compliance
 - **Audit Ready**: Comprehensive logging and monitoring
+
+### Password Security System (NEW)
+- **Comprehensive Password Policies**: 12+ character minimum, complexity requirements
+- **Account Lockout Protection**: 5 failed attempts trigger 30-minute lockout
+- **Password History Tracking**: Prevents reusing last 5 passwords
+- **Mandatory Password Changes**: First-login password change requirement
+- **Secure Admin Defaults**: Random password generation with forced change
+- **Real-time Validation**: Live password policy compliance checking
+- **Database-level Enforcement**: SQL functions for password validation and lockout handling
 
 ### Frontend Security (NEW)
 - **Brute Force Protection**: Progressive lockout system with exponential backoff

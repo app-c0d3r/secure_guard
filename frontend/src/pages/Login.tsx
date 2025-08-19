@@ -201,7 +201,7 @@ export default function Login() {
             <div className="card-body">
               <div className="text-center mb-8">
                 <div className="mx-auto h-12 w-12 bg-primary-100 rounded-full flex items-center justify-center mb-4">
-                  <LockClosedIcon className="h-6 w-6 text-primary-600" />
+                  <LockClosedIcon className="icon-lg text-primary-600" />
                 </div>
                 <h2 className="text-2xl font-bold text-secondary-900">Passwort zurücksetzen</h2>
                 <p className="text-secondary-600 mt-2">
@@ -256,8 +256,8 @@ export default function Login() {
         className="max-w-md w-full"
       >
         <div className="text-center mb-8">
-          <div className="mx-auto h-16 w-16 bg-primary-600 rounded-full flex items-center justify-center mb-4">
-            <ShieldCheckIcon className="h-8 w-8 text-white" />
+          <div className="mx-auto h-12 w-12 bg-primary-600 rounded-full flex items-center justify-center mb-4">
+            <ShieldCheckIcon className="icon-lg text-white" />
           </div>
           <h1 className="text-3xl font-bold text-secondary-900">SecureGuard</h1>
           <p className="text-secondary-600 mt-2">Sicheres Anmelden in Ihr Konto</p>
@@ -386,12 +386,14 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Demo credentials info */}
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs text-blue-800 text-center">
-                <strong>Demo:</strong> admin@company.com / SecurePass123!
-              </p>
-            </div>
+            {/* Production warning - remove demo credentials in production */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-800 text-center">
+                  <strong>Demo:</strong> admin@company.com / SecurePass123!
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>

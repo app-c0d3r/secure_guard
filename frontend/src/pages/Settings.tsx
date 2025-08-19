@@ -9,12 +9,15 @@ import {
   CircleStackIcon as DatabaseIcon,
   KeyIcon,
   EyeIcon,
-  PencilIcon
+  PencilIcon,
+  LockClosedIcon
 } from '@heroicons/react/24/outline'
 import RolePermissions from '@/pages/Admin/RolePermissions'
+import PasswordChangeModal from '@/components/Security/PasswordChangeModal'
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('general')
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
 
   const tabs = [
     { id: 'general', name: 'Allgemein', icon: CogIcon },
@@ -105,13 +108,26 @@ export default function Settings() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
+                    <h4 className="font-medium text-secondary-900">Passwort ändern</h4>
+                    <p className="text-sm text-secondary-500">Aktuelles Passwort ändern</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowPasswordModal(true)}
+                    className="btn-secondary flex items-center space-x-2"
+                  >
+                    <LockClosedIcon className="w-4 h-4" />
+                    <span>Passwort ändern</span>
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
                     <h4 className="font-medium text-secondary-900">Passwort-Komplexität</h4>
                     <p className="text-sm text-secondary-500">Mindestanforderungen für Passwörter</p>
                   </div>
                   <select className="input w-auto">
-                    <option>Hoch</option>
-                    <option>Mittel</option>
-                    <option>Niedrig</option>
+                    <option>Hoch (12+ Zeichen, Groß-/Kleinbuchstaben, Zahlen, Sonderzeichen)</option>
+                    <option>Mittel (8+ Zeichen, Gemischt)</option>
+                    <option>Niedrig (6+ Zeichen)</option>
                   </select>
                 </div>
               </div>
@@ -337,6 +353,14 @@ export default function Settings() {
           </motion.div>
         </div>
       </div>
+      
+      {/* Password Change Modal */}
+      <PasswordChangeModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        isRequired={false}
+        onSuccess={() => setShowPasswordModal(false)}
+      />
     </div>
   )
 }

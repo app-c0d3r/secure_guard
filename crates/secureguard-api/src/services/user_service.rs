@@ -1,5 +1,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
+use chrono::Utc;
+use serde_json::Value;
 use secureguard_shared::{User, CreateUserRequest, SecureGuardError, Result};
 use crate::services::auth_service::AuthService;
 
@@ -72,8 +74,15 @@ impl UserService {
     }
 
     pub async fn verify_credentials(&self, username: &str, password: &str) -> Result<Option<User>> {
+        // Check if account is locked
+        let now = Utc::now();
         let row = sqlx::query!(
-            "SELECT user_id, username, email, password_hash, created_at, updated_at, is_active FROM users.users WHERE username = $1 AND is_active = true",
+            r#"
+            SELECT user_id, username, email, password_hash, created_at, updated_at, is_active,
+                   must_change_password, failed_login_attempts, account_locked_until, role
+            FROM users.users 
+            WHERE username = $1 AND is_active = true
+            "#,
             username
         )
         .fetch_optional(&self.pool)
@@ -81,7 +90,23 @@ impl UserService {
         .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
 
         if let Some(row) = row {
+            // Check if account is locked
+            if let Some(locked_until) = row.account_locked_until {
+                if locked_until > now {
+                    return Err(SecureGuardError::ValidationError(
+                        "Account is temporarily locked due to too many failed login attempts".to_string()
+                    ));
+                }
+            }
+
+            // Verify password
             if self.auth_service.verify_password(password, &row.password_hash)? {
+                // Handle successful login
+                sqlx::query!("SELECT users.handle_successful_login($1)", username)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
                 return Ok(Some(User {
                     user_id: row.user_id,
                     username: row.username,
@@ -90,9 +115,144 @@ impl UserService {
                     updated_at: row.updated_at,
                     is_active: row.is_active,
                 }));
+            } else {
+                // Handle failed login
+                sqlx::query!("SELECT users.handle_failed_login($1)", username)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
             }
         }
 
         Ok(None)
     }
+
+    pub async fn must_change_password(&self, user_id: Uuid) -> Result<bool> {
+        let result = sqlx::query!(
+            "SELECT must_change_password FROM users.users WHERE user_id = $1",
+            user_id
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+        Ok(result.map(|r| r.must_change_password).unwrap_or(false))
+    }
+
+    pub async fn change_password(&self, user_id: Uuid, old_password: &str, new_password: &str) -> Result<()> {
+        // Validate password strength
+        if !self.validate_password_strength(new_password).await? {
+            return Err(SecureGuardError::ValidationError(
+                "Password does not meet security requirements".to_string()
+            ));
+        }
+
+        // Get current user data
+        let user_data = sqlx::query!(
+            "SELECT password_hash, password_history FROM users.users WHERE user_id = $1",
+            user_id
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?
+        .ok_or(SecureGuardError::UserNotFound)?;
+
+        // Verify old password
+        if !self.auth_service.verify_password(old_password, &user_data.password_hash)? {
+            return Err(SecureGuardError::AuthenticationFailed);
+        }
+
+        // Check password history
+        let history: Vec<String> = serde_json::from_value(user_data.password_history.unwrap_or(Value::Array(vec![])))
+            .unwrap_or_default();
+        
+        for old_hash in &history {
+            if self.auth_service.verify_password(new_password, old_hash)? {
+                return Err(SecureGuardError::ValidationError(
+                    "Password has been used recently. Please choose a different password".to_string()
+                ));
+            }
+        }
+
+        // Hash new password
+        let new_hash = self.auth_service.hash_password(new_password)?;
+
+        // Update password history (keep last 5)
+        let mut new_history = history;
+        new_history.insert(0, user_data.password_hash);
+        new_history.truncate(5);
+
+        // Update password
+        sqlx::query!(
+            r#"
+            UPDATE users.users 
+            SET password_hash = $1, 
+                must_change_password = FALSE, 
+                password_last_changed = now(),
+                password_history = $2,
+                updated_at = now()
+            WHERE user_id = $3
+            "#,
+            new_hash,
+            serde_json::to_value(new_history).unwrap(),
+            user_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    pub async fn validate_password_strength(&self, password: &str) -> Result<bool> {
+        let result = sqlx::query!(
+            r#"
+            SELECT users.validate_password_strength($1, 
+                (SELECT min_length FROM users.password_policies LIMIT 1),
+                (SELECT require_uppercase FROM users.password_policies LIMIT 1),
+                (SELECT require_lowercase FROM users.password_policies LIMIT 1),
+                (SELECT require_numbers FROM users.password_policies LIMIT 1),
+                (SELECT require_special_chars FROM users.password_policies LIMIT 1)
+            ) as is_valid
+            "#,
+            password
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+        Ok(result.is_valid.unwrap_or(false))
+    }
+
+    pub async fn get_password_policy(&self) -> Result<PasswordPolicy> {
+        let policy = sqlx::query!(
+            r#"
+            SELECT min_length, require_uppercase, require_lowercase, 
+                   require_numbers, require_special_chars, max_age_days
+            FROM users.password_policies LIMIT 1
+            "#
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+        Ok(PasswordPolicy {
+            min_length: policy.min_length,
+            require_uppercase: policy.require_uppercase,
+            require_lowercase: policy.require_lowercase,
+            require_numbers: policy.require_numbers,
+            require_special_chars: policy.require_special_chars,
+            max_age_days: policy.max_age_days,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct PasswordPolicy {
+    pub min_length: i32,
+    pub require_uppercase: bool,
+    pub require_lowercase: bool,
+    pub require_numbers: bool,
+    pub require_special_chars: bool,
+    pub max_age_days: i32,
 }

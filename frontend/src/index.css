@@ -126,4 +126,189 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Responsive image and element sizing */
+  img {
+    @apply max-w-full h-auto;
+  }
+
+  /* Ensure icons and elements don't exceed their containers */
+  .responsive-container {
+    @apply max-w-full overflow-hidden;
+  }
+
+  /* Fix oversized elements in production */
+  .card img,
+  .modal img,
+  .support-modal img {
+    @apply max-w-full max-h-96 object-contain;
+  }
+
+  /* Responsive avatar and user images */
+  .avatar img {
+    @apply w-full h-full object-cover;
+  }
+
+  /* Responsive icon sizing - prevent icons from being too large */
+  svg {
+    @apply flex-shrink-0;
+  }
+
+  /* Icon size constraints for better display */
+  .h-12, .w-12 {
+    @apply max-h-12 max-w-12;
+  }
+
+  .h-16, .w-16 {
+    @apply max-h-16 max-w-16;
+  }
+
+  .h-20, .w-20 {
+    @apply max-h-20 max-w-20;
+  }
+
+  /* Ensure large icons are responsive on mobile */
+  @media (max-width: 640px) {
+    .h-12, .w-12 {
+      @apply h-8 w-8;
+    }
+    
+    .h-16, .w-16 {
+      @apply h-10 w-10;
+    }
+    
+    .h-20, .w-20 {
+      @apply h-12 w-12;
+    }
+  }
+
+  /* Constrain very large icons */
+  .h-24, .w-24,
+  .h-32, .w-32,
+  .h-40, .w-40,
+  .h-48, .w-48 {
+    @apply max-h-16 max-w-16;
+  }
+
+  @media (max-width: 640px) {
+    .h-24, .w-24,
+    .h-32, .w-32,
+    .h-40, .w-40,
+    .h-48, .w-48 {
+      @apply max-h-12 max-w-12;
+    }
+  }
+
+  /* Utility classes for consistent icon sizing */
+  .icon-xs {
+    @apply h-3 w-3;
+  }
+
+  .icon-sm {
+    @apply h-4 w-4;
+  }
+
+  .icon-md {
+    @apply h-5 w-5;
+  }
+
+  .icon-lg {
+    @apply h-6 w-6;
+  }
+
+  .icon-xl {
+    @apply h-8 w-8;
+  }
+
+  .icon-2xl {
+    @apply h-10 w-10;
+  }
+
+  .icon-3xl {
+    @apply h-12 w-12;
+  }
+
+  /* Responsive icon sizing for mobile */
+  @media (max-width: 640px) {
+    .icon-xl {
+      @apply h-6 w-6;
+    }
+    
+    .icon-2xl {
+      @apply h-8 w-8;
+    }
+    
+    .icon-3xl {
+      @apply h-10 w-10;
+    }
+  }
+
+  /* Global responsive image constraints */
+  img,
+  svg,
+  video {
+    @apply max-w-full h-auto;
+  }
+
+  /* Prevent content overflow */
+  * {
+    box-sizing: border-box;
+  }
+
+  /* Container sizing constraints */
+  .container,
+  .max-w-7xl,
+  .max-w-6xl,
+  .max-w-5xl,
+  .max-w-4xl {
+    @apply max-w-full;
+  }
+
+  /* Card and modal content sizing */
+  .card,
+  .modal {
+    @apply max-w-full overflow-hidden;
+  }
+
+  .card img,
+  .modal img {
+    @apply w-full h-auto object-contain max-h-96;
+  }
+
+  /* Responsive layout fixes */
+  @media (max-width: 768px) {
+    .h-80 {
+      @apply h-64;
+    }
+    
+    .h-96 {
+      @apply h-80;
+    }
+    
+    .max-h-96 {
+      @apply max-h-80;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .h-64 {
+      @apply h-48;
+    }
+    
+    .h-80 {
+      @apply h-56;
+    }
+    
+    .h-96 {
+      @apply h-64;
+    }
+    
+    .max-h-80 {
+      @apply max-h-64;
+    }
+    
+    .max-h-96 {
+      @apply max-h-72;
+    }
+  }
 }

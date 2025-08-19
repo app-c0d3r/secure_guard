@@ -294,7 +294,7 @@ export default function SecurityDashboard() {
         <div className="card-body p-0">
           {filteredEvents.length === 0 ? (
             <div className="text-center py-12">
-              <ShieldExclamationIcon className="mx-auto h-12 w-12 text-secondary-400" />
+              <ShieldExclamationIcon className="mx-auto icon-3xl text-secondary-400" />
               <h3 className="mt-2 text-sm font-medium text-secondary-900">
                 Keine Ereignisse gefunden
               </h3>

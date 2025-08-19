@@ -1,0 +1,462 @@
+#!/bin/bash
+
+# SecureGuard Cross-Platform Service Control Script
+# Works on: Linux, macOS, Windows (Git Bash/WSL/MSYS2)
+# Usage: ./myservice [start|stop|dev|help]
+
+set -e  # Exit on error
+
+# Color codes for better output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+WHITE='\033[0;37m'
+BOLD='\033[1m'
+NC='\033[0m' # No Color
+
+# Script configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+FRONTEND_PORT=3002
+BACKEND_PORT=3000
+DB_PORT=5432
+
+# OS Detection
+detect_os() {
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        OS="linux"
+        DISTRO=$(lsb_release -si 2>/dev/null || echo "unknown")
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        OS="macos"
+        DISTRO="macOS"
+    elif [[ "$OSTYPE" == "cygwin" || "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+        OS="windows"
+        DISTRO="Windows"
+    elif [[ -n "$WSL_DISTRO_NAME" ]]; then
+        OS="wsl"
+        DISTRO="WSL-$WSL_DISTRO_NAME"
+    else
+        OS="unknown"
+        DISTRO="Unknown"
+    fi
+    
+    # Check if we're in Git Bash on Windows
+    if [[ "$OS" == "windows" && -n "$MSYSTEM" ]]; then
+        OS="gitbash"
+        DISTRO="Git Bash"
+    fi
+}
+
+# Check if port is in use
+check_port() {
+    local port=$1
+    local service_name=$2
+    
+    case $OS in
+        "linux"|"macos"|"wsl")
+            if command -v lsof >/dev/null 2>&1; then
+                local pids=$(lsof -ti:$port 2>/dev/null || true)
+            elif command -v netstat >/dev/null 2>&1; then
+                local pids=$(netstat -tlpn 2>/dev/null | grep ":$port " | awk '{print $7}' | cut -d'/' -f1 || true)
+            elif command -v ss >/dev/null 2>&1; then
+                local pids=$(ss -tlpn 2>/dev/null | grep ":$port " | grep -oE 'pid=[0-9]+' | cut -d'=' -f2 || true)
+            else
+                echo -e "${YELLOW}⚠️  Warning: Cannot check port $port (no lsof/netstat/ss available)${NC}"
+                return 0
+            fi
+            ;;
+        "windows"|"gitbash")
+            local pids=$(netstat -ano 2>/dev/null | findstr ":$port " | awk '{print $5}' | sort -u || true)
+            ;;
+    esac
+    
+    if [[ -n "$pids" && "$pids" != "" ]]; then
+        echo -e "${YELLOW}⚠️  Port $port is already in use by $service_name${NC}"
+        echo -e "${CYAN}   PIDs: $pids${NC}"
+        return 1
+    fi
+    return 0
+}
+
+# Kill processes on port
+kill_port() {
+    local port=$1
+    local service_name=$2
+    
+    echo -e "${CYAN}🔍 Checking for existing $service_name processes (port $port)...${NC}"
+    
+    case $OS in
+        "linux"|"macos"|"wsl")
+            local pids=""
+            if command -v lsof >/dev/null 2>&1; then
+                pids=$(lsof -ti:$port 2>/dev/null || true)
+            elif command -v netstat >/dev/null 2>&1; then
+                pids=$(netstat -tlpn 2>/dev/null | grep ":$port " | awk '{print $7}' | cut -d'/' -f1 || true)
+            elif command -v ss >/dev/null 2>&1; then
+                pids=$(ss -tlpn 2>/dev/null | grep ":$port " | grep -oE 'pid=[0-9]+' | cut -d'=' -f2 || true)
+            fi
+            
+            if [[ -n "$pids" && "$pids" != "" ]]; then
+                echo -e "${YELLOW}🔥 Killing existing $service_name processes: $pids${NC}"
+                for pid in $pids; do
+                    if [[ "$pid" =~ ^[0-9]+$ ]]; then
+                        kill -TERM "$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+                    fi
+                done
+                sleep 2
+            else
+                echo -e "${GREEN}✅ No existing $service_name processes found${NC}"
+            fi
+            ;;
+        "windows"|"gitbash")
+            local pids=$(netstat -ano 2>/dev/null | findstr ":$port " | awk '{print $5}' | sort -u || true)
+            if [[ -n "$pids" && "$pids" != "" ]]; then
+                echo -e "${YELLOW}🔥 Killing existing $service_name processes: $pids${NC}"
+                for pid in $pids; do
+                    if [[ "$pid" =~ ^[0-9]+$ ]]; then
+                        taskkill //F //PID "$pid" >/dev/null 2>&1 || true
+                    fi
+                done
+                sleep 2
+            else
+                echo -e "${GREEN}✅ No existing $service_name processes found${NC}"
+            fi
+            ;;
+    esac
+}
+
+# Check if Docker is available and running
+check_docker() {
+    echo -e "${CYAN}🐳 Checking Docker status...${NC}"
+    
+    if ! command -v docker >/dev/null 2>&1; then
+        echo -e "${RED}❌ Docker is not installed or not in PATH${NC}"
+        echo -e "${YELLOW}   Please install Docker Desktop or Docker Engine${NC}"
+        exit 1
+    fi
+    
+    if ! docker version >/dev/null 2>&1; then
+        echo -e "${YELLOW}⚠️  Docker is installed but not running${NC}"
+        
+        case $OS in
+            "windows"|"gitbash")
+                echo -e "${CYAN}🚀 Attempting to start Docker Desktop...${NC}"
+                if [[ -f "/c/Program Files/Docker/Docker/Docker Desktop.exe" ]]; then
+                    "/c/Program Files/Docker/Docker/Docker Desktop.exe" &
+                elif [[ -f "/mnt/c/Program Files/Docker/Docker/Docker Desktop.exe" ]]; then
+                    "/mnt/c/Program Files/Docker/Docker/Docker Desktop.exe" &
+                else
+                    echo -e "${RED}❌ Cannot find Docker Desktop executable${NC}"
+                    exit 1
+                fi
+                
+                echo -e "${CYAN}⏳ Waiting for Docker to start...${NC}"
+                local attempts=0
+                while ! docker version >/dev/null 2>&1 && [[ $attempts -lt 30 ]]; do
+                    sleep 2
+                    attempts=$((attempts + 1))
+                    echo -ne "."
+                done
+                echo ""
+                ;;
+            "linux")
+                echo -e "${CYAN}🚀 Attempting to start Docker service...${NC}"
+                if command -v systemctl >/dev/null 2>&1; then
+                    sudo systemctl start docker || {
+                        echo -e "${RED}❌ Failed to start Docker service${NC}"
+                        exit 1
+                    }
+                elif command -v service >/dev/null 2>&1; then
+                    sudo service docker start || {
+                        echo -e "${RED}❌ Failed to start Docker service${NC}"
+                        exit 1
+                    }
+                else
+                    echo -e "${RED}❌ Cannot start Docker service (no systemctl or service command)${NC}"
+                    exit 1
+                fi
+                ;;
+            "macos")
+                echo -e "${CYAN}🚀 Please start Docker Desktop manually${NC}"
+                exit 1
+                ;;
+        esac
+        
+        if ! docker version >/dev/null 2>&1; then
+            echo -e "${RED}❌ Docker failed to start${NC}"
+            exit 1
+        fi
+    fi
+    
+    echo -e "${GREEN}✅ Docker is running${NC}"
+}
+
+# Show help
+show_help() {
+    echo ""
+    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║                       SecureGuard Service Control                       ║${NC}"
+    echo -e "${BOLD}║                        Cross-Platform Edition                           ║${NC}"
+    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${BOLD}SYSTEM INFO:${NC}"
+    echo -e "  🖥️  OS: ${CYAN}$DISTRO ($OS)${NC}"
+    echo -e "  📁 Project: ${CYAN}$PROJECT_ROOT${NC}"
+    echo ""
+    echo -e "${BOLD}USAGE:${NC}"
+    echo -e "  ${CYAN}./myservice [COMMAND]${NC}"
+    echo ""
+    echo -e "${BOLD}COMMANDS:${NC}"
+    echo -e "  ${GREEN}start${NC}     🚀 Start production environment (optimized builds)"
+    echo -e "  ${GREEN}dev${NC}       🔧 Start development environment (debug mode + hot reload)"
+    echo -e "  ${GREEN}stop${NC}      ⛔ Stop all environments (development + production)"
+    echo -e "  ${GREEN}help${NC}      ❓ Show this help message"
+    echo ""
+    echo -e "${BOLD}EXAMPLES:${NC}"
+    echo -e "  ${CYAN}./myservice start${NC}          Start production environment"
+    echo -e "  ${CYAN}./myservice dev${NC}            Start development environment"
+    echo -e "  ${CYAN}./myservice stop${NC}           Stop all services"
+    echo -e "  ${CYAN}./myservice${NC}                Show this help (same as './myservice help')"
+    echo ""
+    echo -e "${BOLD}ENVIRONMENTS:${NC}"
+    echo -e "  📦 ${YELLOW}Production${NC}  - Uses release builds, production database"
+    echo -e "  🔧 ${YELLOW}Development${NC} - Uses debug builds, dev database, hot reload"
+    echo ""
+    echo -e "${BOLD}SERVICES MANAGED:${NC}"
+    echo -e "  🐘 PostgreSQL Database   (Port $DB_PORT - Docker container)"
+    echo -e "  🦀 Rust Backend API      (Port $BACKEND_PORT)"
+    echo -e "  ⚛️  React Frontend        (Port $FRONTEND_PORT)"
+    echo ""
+    echo -e "${BOLD}FEATURES:${NC}"
+    echo -e "  ✅ Cross-platform support (Linux, macOS, Windows)"
+    echo -e "  ✅ Automatic port conflict detection and cleanup"
+    echo -e "  ✅ Docker auto-start and health checking"
+    echo -e "  ✅ Smart process management"
+    echo ""
+}
+
+# Start development environment
+start_dev() {
+    echo ""
+    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║                    🔧 STARTING DEVELOPMENT ENVIRONMENT                   ║${NC}"
+    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    # Check and clean up ports
+    kill_port $FRONTEND_PORT "React Frontend"
+    kill_port $BACKEND_PORT "Rust Backend"
+    
+    # Check Docker
+    check_docker
+    
+    # Set environment variables
+    export DATABASE_URL="postgresql://secureguard:password@localhost:$DB_PORT/secureguard_dev"
+    export RUST_LOG="secureguard_api=debug,tower_http=debug,axum=debug"
+    export NODE_ENV="development"
+    
+    echo -e "${CYAN}[1/3] Starting PostgreSQL Database (Development)...${NC}"
+    cd "$PROJECT_ROOT"
+    docker-compose up -d db || {
+        echo -e "${RED}❌ Failed to start database${NC}"
+        exit 1
+    }
+    
+    echo -e "${CYAN}[2/3] Starting Rust Backend Server (Debug Mode)...${NC}"
+    cd "$PROJECT_ROOT/crates/secureguard-api"
+    
+    case $OS in
+        "windows"|"gitbash")
+            start "SecureGuard API [DEV]" cmd /k "cargo run" &
+            ;;
+        *)
+            gnome-terminal --title="SecureGuard API [DEV]" -- bash -c "cargo run; exec bash" 2>/dev/null || \
+            xterm -title "SecureGuard API [DEV]" -e "bash -c 'cargo run; exec bash'" 2>/dev/null || \
+            terminal -e "bash -c 'cargo run; exec bash'" 2>/dev/null || \
+            cargo run &
+            ;;
+    esac
+    
+    echo -e "${CYAN}[3/3] Starting React Frontend (Development)...${NC}"
+    sleep 5  # Give backend time to start
+    cd "$PROJECT_ROOT/frontend"
+    
+    case $OS in
+        "windows"|"gitbash")
+            start "SecureGuard Frontend [DEV]" cmd /k "set PORT=$FRONTEND_PORT && npm run dev" &
+            ;;
+        *)
+            export PORT=$FRONTEND_PORT
+            gnome-terminal --title="SecureGuard Frontend [DEV]" -- bash -c "npm run dev; exec bash" 2>/dev/null || \
+            xterm -title "SecureGuard Frontend [DEV]" -e "bash -c 'npm run dev; exec bash'" 2>/dev/null || \
+            terminal -e "bash -c 'npm run dev; exec bash'" 2>/dev/null || \
+            npm run dev &
+            ;;
+    esac
+    
+    echo ""
+    echo -e "${GREEN}✅ Development Environment Started${NC}"
+    echo -e "${CYAN}🔗 Frontend: http://localhost:$FRONTEND_PORT (React + Vite)${NC}"
+    echo -e "${CYAN}🔗 API: http://localhost:$BACKEND_PORT/api${NC}"
+    echo -e "${CYAN}📊 Database: localhost:$DB_PORT (secureguard_dev)${NC}"
+    echo -e "${CYAN}🎨 Themes: Dark/Light mode available in header navigation${NC}"
+}
+
+# Start production environment
+start_prod() {
+    echo ""
+    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║                    🚀 STARTING PRODUCTION ENVIRONMENT                    ║${NC}"
+    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    # Check and clean up ports
+    kill_port $FRONTEND_PORT "React Frontend"
+    kill_port $BACKEND_PORT "Rust Backend"
+    
+    # Check Docker
+    check_docker
+    
+    # Set environment variables
+    export DATABASE_URL="postgresql://secureguard:password@localhost:$DB_PORT/secureguard_prod"
+    export RUST_LOG="secureguard_api=info"
+    export NODE_ENV="production"
+    
+    echo -e "${CYAN}[1/3] Starting PostgreSQL Database (Production)...${NC}"
+    cd "$PROJECT_ROOT"
+    if [[ -f "docker-compose.prod.yml" ]]; then
+        docker-compose -f docker-compose.prod.yml up -d db || docker-compose up -d db
+    else
+        docker-compose up -d db
+    fi || {
+        echo -e "${RED}❌ Failed to start database${NC}"
+        exit 1
+    }
+    
+    echo -e "${CYAN}[2/3] Building and Starting Rust Backend Server (Release Mode)...${NC}"
+    cd "$PROJECT_ROOT/crates/secureguard-api"
+    
+    case $OS in
+        "windows"|"gitbash")
+            start "SecureGuard API [PROD]" cmd /k "cargo run --release" &
+            ;;
+        *)
+            gnome-terminal --title="SecureGuard API [PROD]" -- bash -c "cargo run --release; exec bash" 2>/dev/null || \
+            xterm -title "SecureGuard API [PROD]" -e "bash -c 'cargo run --release; exec bash'" 2>/dev/null || \
+            terminal -e "bash -c 'cargo run --release; exec bash'" 2>/dev/null || \
+            cargo run --release &
+            ;;
+    esac
+    
+    echo -e "${CYAN}[3/3] Building and Starting React Frontend (Production)...${NC}"
+    sleep 5  # Give backend time to start
+    cd "$PROJECT_ROOT/frontend"
+    
+    echo -e "${YELLOW}📦 Building React frontend for production...${NC}"
+    npm run build || {
+        echo -e "${RED}❌ Failed to build frontend${NC}"
+        exit 1
+    }
+    
+    case $OS in
+        "windows"|"gitbash")
+            start "SecureGuard Frontend [PROD]" cmd /k "npm run preview -- --port $FRONTEND_PORT" &
+            ;;
+        *)
+            gnome-terminal --title="SecureGuard Frontend [PROD]" -- bash -c "npm run preview -- --port $FRONTEND_PORT; exec bash" 2>/dev/null || \
+            xterm -title "SecureGuard Frontend [PROD]" -e "bash -c 'npm run preview -- --port $FRONTEND_PORT; exec bash'" 2>/dev/null || \
+            terminal -e "bash -c 'npm run preview -- --port $FRONTEND_PORT; exec bash'" 2>/dev/null || \
+            npm run preview -- --port $FRONTEND_PORT &
+            ;;
+    esac
+    
+    echo ""
+    echo -e "${GREEN}✅ Production Environment Started${NC}"
+    echo -e "${CYAN}🔗 Frontend: http://localhost:$FRONTEND_PORT (Production Build)${NC}"
+    echo -e "${CYAN}🔗 API: http://localhost:$BACKEND_PORT/api${NC}"
+    echo -e "${CYAN}📊 Database: localhost:$DB_PORT (secureguard_prod)${NC}"
+    echo -e "${CYAN}🎨 Themes: Dark/Light mode available in header navigation${NC}"
+    echo -e "${CYAN}🔐 Demo Login: admin@company.com / SecurePass123!${NC}"
+}
+
+# Stop all environments
+stop_all() {
+    echo ""
+    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║                      ⛔ STOPPING ALL ENVIRONMENTS                        ║${NC}"
+    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    # Kill services
+    kill_port $FRONTEND_PORT "React Frontend"
+    kill_port $BACKEND_PORT "Rust Backend API"
+    
+    echo -e "${CYAN}[3/3] Stopping PostgreSQL Database (Docker containers)...${NC}"
+    cd "$PROJECT_ROOT"
+    
+    # Stop all possible docker-compose configurations
+    docker-compose down 2>/dev/null || true
+    if [[ -f "docker-compose.prod.yml" ]]; then
+        docker-compose -f docker-compose.prod.yml down 2>/dev/null || true
+    fi
+    
+    # Additional cleanup based on OS
+    case $OS in
+        "windows"|"gitbash")
+            taskkill //F //IM node.exe 2>/dev/null || true
+            taskkill //F //IM cargo.exe 2>/dev/null || true
+            ;;
+        *)
+            pkill -f "node.*vite" 2>/dev/null || true
+            pkill -f "cargo run" 2>/dev/null || true
+            pkill -f "npm run dev" 2>/dev/null || true
+            pkill -f "npm run preview" 2>/dev/null || true
+            ;;
+    esac
+    
+    echo ""
+    echo -e "${GREEN}✅ All SecureGuard services have been stopped${NC}"
+    echo -e "${CYAN}   🐘 PostgreSQL Database - Stopped${NC}"
+    echo -e "${CYAN}   🦀 Rust Backend API - Stopped${NC}"
+    echo -e "${CYAN}   ⚛️  React Frontend - Stopped${NC}"
+}
+
+# Main script logic
+main() {
+    # Detect OS first
+    detect_os
+    
+    local action="${1:-}"
+    
+    # Show help if no parameters provided
+    if [[ -z "$action" ]]; then
+        show_help
+        exit 0
+    fi
+    
+    case "$action" in
+        "start")
+            start_prod
+            ;;
+        "dev")
+            start_dev
+            ;;
+        "stop")
+            stop_all
+            ;;
+        "help"|"--help"|"-h")
+            show_help
+            ;;
+        *)
+            echo -e "${RED}❌ ERROR: Invalid command '$action'${NC}"
+            echo ""
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+# Run main function
+main "$@"

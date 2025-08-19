@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Demo script to show port checking functionality
+echo "🔍 Demonstrating port checking functionality..."
+echo ""
+
+# Include the OS detection from our main script
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    OS="linux"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    OS="macos"
+elif [[ "$OSTYPE" == "cygwin" || "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    OS="windows"
+elif [[ -n "$WSL_DISTRO_NAME" ]]; then
+    OS="wsl"
+else
+    OS="unknown"
+fi
+
+if [[ "$OS" == "windows" && -n "$MSYSTEM" ]]; then
+    OS="gitbash"
+fi
+
+echo "Detected OS: $OS"
+echo ""
+
+# Test port checking
+test_port=3002
+
+echo "Testing port $test_port..."
+
+case $OS in
+    "linux"|"macos"|"wsl")
+        if command -v lsof >/dev/null 2>&1; then
+            pids=$(lsof -ti:$test_port 2>/dev/null || true)
+        elif command -v netstat >/dev/null 2>&1; then
+            pids=$(netstat -tlpn 2>/dev/null | grep ":$test_port " | awk '{print $7}' | cut -d'/' -f1 || true)
+        elif command -v ss >/dev/null 2>&1; then
+            pids=$(ss -tlpn 2>/dev/null | grep ":$test_port " | grep -oE 'pid=[0-9]+' | cut -d'=' -f2 || true)
+        fi
+        ;;
+    "windows"|"gitbash")
+        pids=$(netstat -ano 2>/dev/null | findstr ":$test_port " | awk '{print $5}' | sort -u || true)
+        ;;
+esac
+
+if [[ -n "$pids" && "$pids" != "" ]]; then
+    echo "⚠️  Port $test_port is in use by PIDs: $pids"
+else
+    echo "✅ Port $test_port is free"
+fi
+
+echo ""
+echo "🎯 This functionality is now integrated into the main myservice script!"
+echo "   Run './myservice start' or './myservice dev' to see it in action."

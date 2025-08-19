@@ -362,7 +362,7 @@ export default function Security() {
           animate={{ opacity: 1 }}
           className="text-center py-12"
         >
-          <ShieldCheckIcon className="mx-auto h-12 w-12 text-secondary-400" />
+          <ShieldCheckIcon className="mx-auto icon-lg text-secondary-400" />
           <h3 className="mt-2 text-sm font-medium text-secondary-900">Keine Vorfälle gefunden</h3>
           <p className="mt-1 text-sm text-secondary-500">
             Versuchen Sie, Ihre Suchkriterien zu ändern.

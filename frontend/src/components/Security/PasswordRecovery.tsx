@@ -256,8 +256,8 @@ export default function PasswordRecovery({ token, onSuccess, onCancel }: Passwor
         className="max-w-md w-full"
       >
         <div className="text-center mb-8">
-          <div className="mx-auto h-16 w-16 bg-primary-600 rounded-full flex items-center justify-center mb-4">
-            <ShieldCheckIcon className="h-8 w-8 text-white" />
+          <div className="mx-auto h-12 w-12 bg-primary-600 rounded-full flex items-center justify-center mb-4">
+            <ShieldCheckIcon className="icon-lg text-white" />
           </div>
           <h1 className="text-3xl font-bold text-secondary-900">SecureGuard</h1>
           <p className="text-secondary-600 mt-2">
@@ -270,7 +270,7 @@ export default function PasswordRecovery({ token, onSuccess, onCancel }: Passwor
             {step === 1 && !isEmailSent && (
               <form onSubmit={handleEmailSubmit} className="space-y-6">
                 <div className="text-center mb-6">
-                  <LockClosedIcon className="mx-auto h-12 w-12 text-secondary-400 mb-4" />
+                  <LockClosedIcon className="mx-auto icon-3xl text-secondary-400 mb-4" />
                   <h2 className="text-xl font-semibold text-secondary-900">
                     Passwort vergessen?
                   </h2>
@@ -316,7 +316,7 @@ export default function PasswordRecovery({ token, onSuccess, onCancel }: Passwor
 
             {step === 1 && isEmailSent && (
               <div className="text-center">
-                <CheckCircleIcon className="mx-auto h-12 w-12 text-success-600 mb-4" />
+                <CheckCircleIcon className="mx-auto icon-3xl text-success-600 mb-4" />
                 <h2 className="text-xl font-semibold text-secondary-900 mb-2">
                   E-Mail gesendet!
                 </h2>
@@ -339,7 +339,7 @@ export default function PasswordRecovery({ token, onSuccess, onCancel }: Passwor
             {step === 2 && (
               <form onSubmit={handlePasswordReset} className="space-y-6">
                 <div className="text-center mb-6">
-                  <KeyIcon className="mx-auto h-12 w-12 text-secondary-400 mb-4" />
+                  <KeyIcon className="mx-auto icon-3xl text-secondary-400 mb-4" />
                   <h2 className="text-xl font-semibold text-secondary-900">
                     Neues Passwort festlegen
                   </h2>

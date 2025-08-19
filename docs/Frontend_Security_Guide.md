@@ -62,6 +62,68 @@ interface PasswordStrength {
 }
 ```
 
+## 🔐 Password Change Modal & Policy Enforcement (NEW)
+
+### Password Change Modal Component
+
+SecureGuard includes a comprehensive password change modal (`PasswordChangeModal.tsx`) that enforces security policies in real-time:
+
+#### Features
+- **Real-time Policy Validation**: Live feedback as user types new password
+- **Visual Policy Indicators**: Green checkmarks for met requirements, red X for unmet
+- **Password Visibility Toggle**: Secure password entry with optional visibility
+- **Confirmation Validation**: Real-time matching validation for password confirmation
+- **Mandatory Change Support**: Modal cannot be dismissed when password change is required
+- **Policy Fetching**: Automatically retrieves current password policy from backend
+
+#### Implementation Details
+```typescript
+// Located in: src/components/Security/PasswordChangeModal.tsx
+interface PasswordPolicy {
+  min_length: number
+  require_uppercase: boolean
+  require_lowercase: boolean
+  require_numbers: boolean
+  require_special_chars: boolean
+  max_age_days: number
+}
+```
+
+#### Security Validation Rules
+- **Minimum Length**: Configurable (default: 12 characters)
+- **Character Requirements**: Uppercase, lowercase, numbers, special characters
+- **History Prevention**: Cannot reuse recent passwords (backend validation)
+- **Current Password Verification**: Must provide correct current password
+- **Real-time Feedback**: Immediate validation as user types
+
+### Enhanced Authentication Flow
+
+#### First-Login Password Change
+- **Automatic Detection**: System checks `must_change_password` flag on login
+- **Forced Modal**: Password change modal appears and cannot be dismissed
+- **Navigation Blocking**: User cannot access other features until password changed
+- **Success Handling**: Modal closes and user gains full access after successful change
+
+#### API Integration
+```typescript
+// Password change endpoint
+POST /api/auth/change-password
+{
+  "old_password": "current_password",
+  "new_password": "new_secure_password"
+}
+
+// Policy endpoint
+GET /api/auth/password-policy
+// Returns current password policy settings
+```
+
+#### Error Handling
+- **Policy Violations**: Real-time validation prevents submission
+- **Backend Errors**: Graceful error handling with user-friendly messages
+- **Network Issues**: Retry mechanisms and offline detection
+- **Validation Feedback**: Clear messaging about what needs to be fixed
+
 ## 📊 Real-time Security Monitoring
 
 ### Monitored Security Events
@@ -142,6 +204,20 @@ export function useSecurityMonitoring(thresholds: Partial<SecurityThresholds> = 
 }
 ```
 
+### Enhanced Authentication Security
+
+#### Login Security Integration
+- **Brute Force Protection**: Progressive lockout after failed attempts
+- **CAPTCHA Integration**: Math-based challenges after 3 failed attempts
+- **Account Lockout Detection**: Real-time feedback about lockout status
+- **Security Event Logging**: All authentication events logged for analysis
+
+#### Password Security Monitoring
+- **Policy Compliance Tracking**: Monitor password policy adherence
+- **Change Attempt Logging**: Log all password change attempts (success/failure)
+- **Admin Override Tracking**: Log administrative password resets
+- **Security Violation Detection**: Detect attempts to bypass password requirements
+
 ## 🎯 CAPTCHA Integration
 
 ### Math-Based CAPTCHA System
@@ -210,6 +286,17 @@ interface SecurityEvent {
   userAgent: string
   url: string
 }
+
+// Enhanced with authentication events
+interface AuthSecurityEvent extends SecurityEvent {
+  type: 'password_change_attempt' | 'login_failure' | 'account_lockout' | 'policy_violation'
+  data: {
+    user_id?: string
+    failure_reason?: string
+    policy_violations?: string[]
+    lockout_duration?: number
+  }
+}
 ```
 
 ### Storage Management
@@ -229,6 +316,15 @@ interface SecurityThresholds {
   devToolsDetection: boolean   // Default: true
   consoleInteraction: boolean  // Default: true
   networkMonitoring: boolean   // Default: true
+}
+
+// Enhanced with password security thresholds
+interface PasswordSecurityThresholds {
+  maxFailedAttempts: number    // Default: 5
+  lockoutDurationMinutes: number // Default: 30
+  captchaAfterAttempts: number // Default: 3
+  passwordPolicyEnforcement: boolean // Default: true
+  realTimeValidation: boolean  // Default: true
 }
 ```
 

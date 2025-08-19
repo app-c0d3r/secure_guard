@@ -1,6 +1,8 @@
 import { Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { useState, useEffect } from 'react'
 import Layout from '@/components/Layout'
+import ProtectedRoute from '@/components/ProtectedRoute'
 import Dashboard from '@/pages/Dashboard'
 import Agents from '@/pages/Agents'
 import Security from '@/pages/Security'
@@ -10,12 +12,15 @@ import Settings from '@/pages/Settings'
 import AssetManagement from '@/pages/AssetManagement'
 import Login from '@/pages/Login'
 import PasswordRecovery from '@/components/Security/PasswordRecovery'
+import PasswordChangeModal from '@/components/Security/PasswordChangeModal'
 import { useAuthStore } from '@/stores/authStore'
 import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 
 function App() {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, token } = useAuthStore()
+  const [mustChangePassword, setMustChangePassword] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   
   // Initialize security monitoring for authenticated users
   useSecurityMonitoring({
@@ -26,6 +31,31 @@ function App() {
     consoleInteraction: true,
     networkMonitoring: true
   })
+
+  // Check authentication status and password change requirement
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      if (isAuthenticated && token) {
+        try {
+          const response = await fetch('/api/auth/status', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            setMustChangePassword(data.must_change_password)
+          }
+        } catch (error) {
+          console.error('Failed to check auth status:', error)
+        }
+      }
+      setIsCheckingAuth(false)
+    }
+
+    checkAuthStatus()
+  }, [isAuthenticated, token])
 
   // Check if this is a password reset route
   const urlParams = new URLSearchParams(window.location.search)
@@ -39,28 +69,102 @@ function App() {
     )
   }
 
-  if (!isAuthenticated) {
+  // Show loading while checking auth status
+  if (isCheckingAuth) {
     return (
       <ThemeProvider>
-        <Login />
+        <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-secondary-600">Loading...</p>
+          </div>
+        </div>
       </ThemeProvider>
     )
   }
 
   return (
     <ThemeProvider>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/agents" element={<Agents />} />
-          <Route path="/security" element={<Security />} />
-          <Route path="/users" element={<Users />} />
-          <Route path="/subscriptions" element={<Subscriptions />} />
-          <Route path="/assets" element={<AssetManagement />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<Login />} />
+        
+        {/* Protected routes */}
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/agents" element={
+          <ProtectedRoute>
+            <Layout>
+              <Agents />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/security" element={
+          <ProtectedRoute>
+            <Layout>
+              <Security />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/users" element={
+          <ProtectedRoute requiredRoles={['system_admin', 'admin', 'manager']} requiredPermissions={['users.read']}>
+            <Layout>
+              <Users />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/subscriptions" element={
+          <ProtectedRoute>
+            <Layout>
+              <Subscriptions />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/assets" element={
+          <ProtectedRoute requiredRoles={['system_admin', 'admin', 'manager']} requiredPermissions={['assets.view']}>
+            <Layout>
+              <AssetManagement />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <Layout>
+              <Settings />
+            </Layout>
+          </ProtectedRoute>
+        } />
+      </Routes>
+      
+      {/* Password Change Modal */}
+      {isAuthenticated && (
+        <PasswordChangeModal
+          isOpen={mustChangePassword}
+          onClose={() => {}} // Cannot close if required
+          isRequired={true}
+          onSuccess={() => setMustChangePassword(false)}
+        />
+      )}
+      
       <Toaster 
         position="top-right"
         toastOptions={{

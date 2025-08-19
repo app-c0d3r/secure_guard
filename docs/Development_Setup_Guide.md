@@ -72,10 +72,29 @@ GRANT ALL PRIVILEGES ON DATABASE secureguard TO postgres;
 # Set database URL
 export DATABASE_URL="postgresql://postgres:password@localhost:5432/secureguard"
 
-# Run migrations
+# Run migrations (includes password security system)
 cd C:\Users\smith\Documents\DEV\secure_guard
 sqlx migrate run
+
+# Verify migration 008 (password security) applied
+sqlx migrate info
 ```
+
+#### Secure Admin Account Setup
+After running migrations, the system automatically creates a secure admin account:
+
+```bash
+# The migration will display the generated admin password
+# Look for this in the migration output:
+# NOTICE: Default admin password: [random-secure-password]
+# NOTICE: IMPORTANT: Change this password immediately after first login!
+```
+
+**Important Security Notes**:
+- Admin password is randomly generated (32 characters)
+- Password must be changed on first login
+- Demo credentials only available in development mode
+- Production deployments use secure defaults only
 
 ### 4. Development Tools Setup
 
@@ -170,11 +189,60 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/secureguard
 REDIS_URL=redis://localhost:6379
 JWT_SECRET=your-secret-key-change-in-production-use-strong-random-key
 PORT=3000
+
+# Development Mode Settings (optional)
+DEV_MODE=true                    # Enables demo credentials
+DEMO_PASSWORD=SecurePass123!     # Only used in development
 ```
 
+### Security Configuration
+
+#### Password Policy Settings
+Password policies are configured in the database via the `users.password_policies` table:
+
+```sql
+-- View current password policy
+SELECT * FROM users.password_policies;
+
+-- Update for development (optional - less strict)
+UPDATE users.password_policies SET
+    min_length = 8,              -- Shorter for dev testing
+    max_failed_attempts = 10,    -- More lenient for dev
+    lockout_duration_minutes = 5 -- Shorter lockout for dev
+WHERE policy_id = (SELECT policy_id FROM users.password_policies LIMIT 1);
+```
+
+#### Development vs Production Security
+- **Development**: 
+  - Demo credentials available (admin@company.com / SecurePass123!)
+  - Relaxed password policies (configurable)
+  - Extended lockout recovery
+- **Production**: 
+  - Random admin password generation
+  - Strict password policies enforced
+  - Standard security lockout procedures
+
 ### Development vs Production
-- **Development**: Use `.env` file with local services
-- **Production**: Use environment variables or secrets management
+- **Development**: Use `.env` file with local services, demo credentials enabled
+- **Production**: Use environment variables or secrets management, secure defaults only
+
+### First-Time Development Login
+
+#### Option 1: Demo Credentials (Development Only)
+If `DEV_MODE=true` in environment:
+```
+Email: admin@company.com
+Password: SecurePass123!
+```
+
+#### Option 2: Generated Admin Account
+Use the randomly generated admin credentials from migration output:
+```
+Email: admin@secureguard.local
+Password: [check migration output for generated password]
+```
+
+**Note**: Both options require immediate password change on first login due to security policy enforcement.
 
 ## Testing Setup
 

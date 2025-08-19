@@ -211,7 +211,7 @@ export default function AddAgentModal({ isOpen, onClose }: AddAgentModalProps) {
                       className="space-y-6"
                     >
                       <div className="text-center py-6">
-                        <ComputerDesktopIcon className="mx-auto h-16 w-16 text-primary-600 mb-4" />
+                        <ComputerDesktopIcon className="mx-auto icon-3xl text-primary-600 mb-4" />
                         <h3 className="text-lg font-semibold text-secondary-900 mb-2">
                           Agent Installation
                         </h3>

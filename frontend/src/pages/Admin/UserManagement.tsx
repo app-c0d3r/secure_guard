@@ -319,7 +319,7 @@ export default function UserManagement() {
           animate={{ opacity: 1 }}
           className="text-center py-12"
         >
-          <UserIcon className="mx-auto h-12 w-12 text-secondary-400" />
+          <UserIcon className="mx-auto icon-3xl text-secondary-400" />
           <h3 className="mt-2 text-sm font-medium text-secondary-900">Keine Benutzer gefunden</h3>
           <p className="mt-1 text-sm text-secondary-500">
             Versuchen Sie, Ihre Suchkriterien zu ändern.
