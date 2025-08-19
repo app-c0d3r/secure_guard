@@ -41,15 +41,15 @@ function Start-DevEnvironment {
         if ($LASTEXITCODE -ne 0) { throw "Failed to start database" }
 
         Write-Host "[2/3] Starting Rust Backend Server (Debug Mode)..." -ForegroundColor Yellow
-        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 'crates\secureguard-api'; cargo run" -WindowStyle Normal
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '..\..\'; cargo run -p secureguard-api" -WindowStyle Normal
 
-        Write-Host "[3/3] Starting React Dashboard (Development)..." -ForegroundColor Yellow
+        Write-Host "[3/3] Starting React Frontend (Development)..." -ForegroundColor Yellow
         Start-Sleep -Seconds 5
-        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 'dashboard'; `$env:PORT='3002'; npm start" -WindowStyle Normal
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '..\..\frontend'; `$env:PORT='3002'; npm run dev" -WindowStyle Normal
 
         Write-Host ""
         Write-Host "✅ Development Environment Started" -ForegroundColor Green
-        Write-Host "🔗 Dashboard: http://localhost:3002" -ForegroundColor Cyan
+        Write-Host "🔗 Frontend: http://localhost:3002" -ForegroundColor Cyan
         Write-Host "🔗 API: http://localhost:3000/api" -ForegroundColor Cyan
         Write-Host "📊 Database: localhost:5432 (secureguard_dev)" -ForegroundColor Cyan
         
@@ -83,15 +83,15 @@ function Start-ProdEnvironment {
         }
 
         Write-Host "[2/3] Building and Starting Rust Backend Server (Release Mode)..." -ForegroundColor Yellow
-        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 'crates\secureguard-api'; cargo run --release" -WindowStyle Normal
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '..\..\'; cargo run -p secureguard-api --release" -WindowStyle Normal
 
-        Write-Host "[3/3] Building and Starting React Dashboard (Production)..." -ForegroundColor Yellow
+        Write-Host "[3/3] Building and Starting React Frontend (Production)..." -ForegroundColor Yellow
         Start-Sleep -Seconds 5
-        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 'dashboard'; npm run build; npx serve -s build -l 3002" -WindowStyle Normal
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '..\..\frontend'; npm run build; npm run preview -- --port 3002" -WindowStyle Normal
 
         Write-Host ""
         Write-Host "✅ Production Environment Started" -ForegroundColor Magenta
-        Write-Host "🔗 Dashboard: http://localhost:3002" -ForegroundColor Cyan
+        Write-Host "🔗 Frontend: http://localhost:3002" -ForegroundColor Cyan
         Write-Host "🔗 API: http://localhost:3000/api" -ForegroundColor Cyan
         Write-Host "📊 Database: localhost:5432 (secureguard_prod)" -ForegroundColor Cyan
         
@@ -107,7 +107,7 @@ function Stop-Environment {
     Write-Host "[$($EnvType.ToUpper())] Stopping $EnvType Environment..." -ForegroundColor Red
     
     try {
-        Write-Host "Stopping React Dashboard (port 3002)..." -ForegroundColor Gray
+        Write-Host "Stopping React Frontend (port 3002)..." -ForegroundColor Gray
         $dashboardProcesses = Get-NetTCPConnection -LocalPort 3002 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess
         foreach ($pid in $dashboardProcesses) {
             Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue

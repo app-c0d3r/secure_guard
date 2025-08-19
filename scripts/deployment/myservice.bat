@@ -139,7 +139,7 @@ if not exist logs mkdir logs
 echo ✅ Logs directory ready
 
 echo [1/3] Starting PostgreSQL Database (Development)...
-cd /d "%~dp0.."
+cd /d "%~dp0..\.."
 docker-compose up -d db
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: Failed to start database
@@ -147,11 +147,11 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo [2/3] Starting Rust Backend Server (Debug Mode)...
-start "SecureGuard API [DEV]" cmd /k "cd /d "%~dp0.." && cd crates\secureguard-api && cargo run"
+start "SecureGuard API [DEV]" cmd /k "cd /d "%~dp0..\.." && cargo run -p secureguard-api"
 
 echo [3/3] Starting React Frontend (Development)...
 timeout /t 5 /nobreak > nul
-start "SecureGuard Frontend [DEV]" cmd /k "cd /d "%~dp0.." && cd frontend && set PORT=3002 && npm run dev"
+start "SecureGuard Frontend [DEV]" cmd /k "cd /d "%~dp0..\.." && cd frontend && set PORT=3002 && npm run dev"
 
 echo.
 echo ✅ Development Environment Started
@@ -175,7 +175,7 @@ if not exist logs mkdir logs
 echo ✅ Logs directory ready
 
 echo [1/3] Starting PostgreSQL Database (Production)...
-cd /d "%~dp0.."
+cd /d "%~dp0..\.."
 docker-compose -f docker-compose.prod.yml up -d db 2>nul || docker-compose up -d db
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: Failed to start database
@@ -183,11 +183,11 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo [2/3] Building and Starting Rust Backend Server (Release Mode)...
-start "SecureGuard API [PROD]" cmd /k "cd /d "%~dp0.." && cd crates\secureguard-api && cargo run --release"
+start "SecureGuard API [PROD]" cmd /k "cd /d "%~dp0..\.." && cargo run -p secureguard-api --release"
 
 echo [3/3] Building and Starting React Frontend (Production)...
 timeout /t 5 /nobreak > nul
-start "SecureGuard Frontend [PROD]" cmd /k "cd /d "%~dp0.." && cd frontend && npm run build && npm run preview -- --port 3002"
+start "SecureGuard Frontend [PROD]" cmd /k "cd /d "%~dp0..\.." && cd frontend && npm run build && npm run preview -- --port 3002"
 
 echo.
 echo ✅ Production Environment Started
