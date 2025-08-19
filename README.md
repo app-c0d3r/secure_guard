@@ -15,11 +15,12 @@ A cloud-native cybersecurity platform with lightweight agent-based threat detect
 - **Professional Deployment**: Three installer formats (MSI, EXE, PowerShell) (✅ Ready)
 - **Enterprise Ready**: Group Policy, SCCM, automated deployment support (✅ Configured)
 - **Authentication**: JWT tokens with Argon2 password hashing + progressive lockout protection (✅ Secure)
-- **Password Security System**: Comprehensive password policies, change requirements, and account lockout (✅ Production-ready)
+- **Password Security System**: Comprehensive password policies, change requirements, password reset, and account lockout (✅ Production-ready)
 - **Secure Admin Defaults**: Random password generation with mandatory first-login change (✅ Implemented)
 - **Database**: PostgreSQL with comprehensive schema and migrations (✅ Working with SQLx)
 - **Security**: Multi-layer authentication, encryption, audit logging, real-time monitoring (✅ Complete)
 - **Full-Stack Integration**: Frontend and backend servers running simultaneously (✅ Production environment ready)
+- **Observability**: OpenTelemetry integration with distributed tracing, metrics, and performance monitoring (✅ Complete)
 - **Quality Assurance**: All compilation errors resolved, TypeScript validation complete (✅ Ready for deployment)
 
 ### 🔧 Quick Start
@@ -64,6 +65,31 @@ A cloud-native cybersecurity platform with lightweight agent-based threat detect
    - **Demo Login (Dev Only)**: admin@company.com / SecurePass123! (Only available in development mode)
    - **Production Admin**: Random secure password generated during database migration (must be changed on first login)
    - **Theme Switcher**: Available in header navigation (dark/light mode)
+
+## 📊 Observability & Monitoring
+
+SecureGuard includes comprehensive observability with OpenTelemetry integration:
+
+### Quick Start Telemetry
+```bash
+# Start telemetry infrastructure
+docker-compose -f docker-compose.telemetry.yml up -d
+
+# Access monitoring UIs
+- Jaeger (Tracing): http://localhost:16686
+- Prometheus (Metrics): http://localhost:9090  
+- Grafana (Dashboards): http://localhost:3001
+- API Metrics: http://localhost:8080/metrics
+```
+
+### Features
+- **Distributed Tracing**: End-to-end request tracing across services
+- **Metrics Collection**: API performance, agent status, database queries
+- **Frontend Monitoring**: User interactions, performance metrics, error tracking
+- **Real-time Dashboards**: Pre-configured Grafana dashboards
+- **Alert Management**: Configurable alerts for system issues
+
+See [Telemetry & Observability Guide](docs/Telemetry_Observability_Guide.md) for detailed setup and usage.
 
 ## 📁 Project Structure
 

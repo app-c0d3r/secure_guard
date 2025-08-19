@@ -213,6 +213,29 @@ curl -X GET https://your-domain.com/api/v1/auth/must-change-password \
 
 ## 📊 Monitoring and Alerting Setup
 
+### OpenTelemetry Observability
+
+#### ✅ Telemetry Infrastructure
+- [ ] Jaeger deployed for distributed tracing
+- [ ] Prometheus configured for metrics collection
+- [ ] Grafana dashboards imported and configured
+- [ ] OpenTelemetry Collector deployed (if using)
+- [ ] OTLP endpoints secured with TLS
+
+#### ✅ Environment Configuration
+- [ ] Production OTLP endpoints configured
+- [ ] Sampling rate set appropriately (e.g., 10% for production)
+- [ ] Resource limits configured for collectors
+- [ ] Data retention policies configured
+- [ ] Backup strategy for metrics data
+
+#### ✅ Monitoring Coverage
+- [ ] API endpoint tracing enabled
+- [ ] Database query performance tracking
+- [ ] Frontend user interaction monitoring
+- [ ] WebSocket connection metrics
+- [ ] Error rate tracking and alerting
+
 ### Security Monitoring
 
 #### ✅ Alert Configuration
@@ -221,6 +244,8 @@ curl -X GET https://your-domain.com/api/v1/auth/must-change-password \
 - [ ] Password policy violation alerts set up
 - [ ] Admin account activity monitoring enabled
 - [ ] Unusual authentication pattern alerts configured
+- [ ] High API error rate alerts (via Prometheus)
+- [ ] Slow response time alerts configured
 
 #### ✅ Metrics Collection
 - [ ] Authentication success/failure rates
@@ -228,6 +253,8 @@ curl -X GET https://your-domain.com/api/v1/auth/must-change-password \
 - [ ] Account lockout statistics
 - [ ] Password policy compliance metrics
 - [ ] Security event logging enabled
+- [ ] OpenTelemetry metrics exported to Prometheus
+- [ ] Custom business metrics configured
 
 #### ✅ Dashboard Setup
 - [ ] Security metrics dashboard configured
@@ -235,15 +262,19 @@ curl -X GET https://your-domain.com/api/v1/auth/must-change-password \
 - [ ] Password policy compliance reporting
 - [ ] Authentication analytics available
 - [ ] Incident response procedures documented
+- [ ] Grafana dashboards for API performance
+- [ ] Tracing dashboard for request flow analysis
 
 ### Performance Monitoring
 
 #### ✅ Application Metrics
-- [ ] API response time monitoring
+- [ ] API response time monitoring (P50, P95, P99)
 - [ ] Database query performance tracking
 - [ ] Authentication endpoint latency
 - [ ] Password validation function performance
 - [ ] System resource utilization monitoring
+- [ ] Request rate and throughput metrics
+- [ ] Error rate by endpoint and status code
 
 ## 🔄 Operational Procedures
 

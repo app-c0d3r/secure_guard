@@ -201,6 +201,68 @@ Authorization: Bearer <jwt-token>
 **Response (200 OK):**
 ```json
 {
+  "must_change": false,
+  "reason": null
+}
+```
+
+### Request Password Reset (NEW)
+
+Request a password reset token to be sent to the user's email.
+
+```http
+POST /auth/password-reset/request
+Content-Type: application/json
+
+{
+  "email": "john@example.com"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Password reset instructions sent to your email"
+}
+```
+
+**Notes:**
+- Always returns success for security (prevents email enumeration)
+- Token expires after 1 hour
+- Email contains reset link with token
+- Previous tokens are invalidated
+
+### Confirm Password Reset (NEW)
+
+Reset password using the token received via email.
+
+```http
+POST /auth/password-reset/confirm
+Content-Type: application/json
+
+{
+  "token": "reset-token-from-email",
+  "new_password": "NewSecurePassword789!"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Password reset successfully"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid or expired token
+- `400 Bad Request`: Password doesn't meet policy requirements
+- `400 Bad Request`: Token already used
+
+**Response (200 OK):**
+```json
+{
   "must_change_password": true,
   "reason": "Password change required on first login"
 }
@@ -404,6 +466,45 @@ Authorization: Bearer <jwt-token>
 ```
 
 ## 🏥 System Health Endpoints
+
+## 📊 Telemetry & Observability Endpoints
+
+### Prometheus Metrics
+
+Export application metrics in Prometheus format.
+
+```http
+GET /metrics
+```
+
+**Response (200 OK):**
+```text
+# HELP api_requests Total number of API requests
+# TYPE api_requests counter
+api_requests{method="GET",endpoint="/api/v1/agents"} 1234
+api_requests{method="POST",endpoint="/api/v1/auth/login"} 567
+
+# HELP api_duration API request duration in seconds
+# TYPE api_duration histogram
+api_duration_bucket{method="GET",endpoint="/api/v1/agents",le="0.1"} 1200
+api_duration_bucket{method="GET",endpoint="/api/v1/agents",le="0.5"} 1230
+
+# HELP agents_active Number of active agents
+# TYPE agents_active gauge
+agents_active 142
+
+# Additional metrics...
+```
+
+**Available Metrics:**
+- `api_requests`: Total API requests by method and endpoint
+- `api_errors`: Total API errors by method, endpoint, and status
+- `api_duration`: Request duration histogram
+- `agents_active`: Current number of active agents
+- `security_events`: Total security events processed
+- `websocket_connections`: Active WebSocket connections
+- `database_queries`: Total database queries
+- `database_query_duration`: Database query duration
 
 ### Health Check
 

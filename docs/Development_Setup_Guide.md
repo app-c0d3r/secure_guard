@@ -127,6 +127,47 @@ Add to `.vscode/settings.json`:
 }
 ```
 
+## Telemetry & Observability Setup
+
+### 1. Start Telemetry Infrastructure
+```bash
+# Start Jaeger, Prometheus, Grafana, and OTEL Collector
+docker-compose -f docker-compose.telemetry.yml up -d
+
+# Verify all services are running
+docker-compose -f docker-compose.telemetry.yml ps
+```
+
+### 2. Configure Environment Variables
+```bash
+# Backend (.env)
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+ENVIRONMENT=development
+
+# Frontend (.env.local)
+VITE_OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+VITE_ENVIRONMENT=development
+```
+
+### 3. Access Telemetry Services
+- **Jaeger UI** (Tracing): http://localhost:16686
+- **Prometheus** (Metrics): http://localhost:9090
+- **Grafana** (Dashboards): http://localhost:3001
+  - Login: admin/secureguard
+- **API Metrics**: http://localhost:8080/metrics
+
+### 4. Verify Telemetry
+```bash
+# Check if metrics are being collected
+curl http://localhost:8080/metrics
+
+# View traces in Jaeger
+# 1. Make some API calls
+# 2. Open Jaeger UI
+# 3. Select "secureguard-api" service
+# 4. Click "Find Traces"
+```
+
 ## Development Workflow
 
 ### 1. Initial Setup Verification
