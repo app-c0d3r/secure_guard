@@ -85,7 +85,7 @@ export default function StatsCard({
             'p-3 rounded-lg',
             colors.icon
           )}>
-            <Icon className="icon-xl" />
+            <Icon className="h-6 w-6" />
           </div>
         </div>
       </div>

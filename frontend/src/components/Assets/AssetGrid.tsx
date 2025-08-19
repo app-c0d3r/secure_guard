@@ -86,7 +86,7 @@ export default function AssetGrid({
         animate={{ opacity: 1, y: 0 }}
         className="text-center py-12"
       >
-        <ComputerDesktopIcon className="mx-auto icon-3xl text-gray-400" />
+        <ComputerDesktopIcon className="mx-auto h-12 w-12 text-gray-400" />
         <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No assets found</h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           No assets match your current filters. Try adjusting your search criteria.

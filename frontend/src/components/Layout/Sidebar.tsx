@@ -84,7 +84,7 @@ export default function Sidebar() {
           animate={{ scale: 1, opacity: 1 }}
           className="flex items-center space-x-2"
         >
-          <ShieldCheckIcon className="icon-lg text-white" />
+          <ShieldCheckIcon className="h-6 w-6 text-white" />
           <span className="text-white text-xl font-bold">SecureGuard</span>
         </motion.div>
       </div>

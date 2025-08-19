@@ -1,14 +1,15 @@
-use secureguard_api::{config::Config, create_app, database::Database};
+use secureguard_api::{config::Config, create_app, database::Database, telemetry};
 use std::net::SocketAddr;
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
 
-    tracing_subscriber::fmt()
-        .with_env_filter("secureguard_api=debug,tower_http=debug")
-        .init();
+    // Initialize OpenTelemetry
+    telemetry::init_telemetry()?;
+    
+    // Initialize metrics
+    telemetry::metrics::init();
 
     let config = Config::from_env()?;
     let database = Database::new(&config.database_url).await?;
@@ -19,7 +20,22 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("SecureGuard API server starting on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    axum::serve(listener, app).await?;
-
+    
+    // Run server with graceful shutdown
+    let result = axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await;
+    
+    // Shutdown telemetry on exit
+    telemetry::shutdown_telemetry();
+    
+    result?;
     Ok(())
+}
+
+async fn shutdown_signal() {
+    tokio::signal::ctrl_c()
+        .await
+        .expect("Failed to install CTRL+C signal handler");
+    tracing::info!("Received shutdown signal");
 }
