@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 use uuid::Uuid;
-use chrono::Utc;
+use chrono::{Utc, Duration};
 use serde_json::Value;
 use secureguard_shared::{User, CreateUserRequest, SecureGuardError, Result};
 use crate::services::auth_service::AuthService;
@@ -244,6 +244,119 @@ impl UserService {
             require_special_chars: policy.require_special_chars,
             max_age_days: policy.max_age_days,
         })
+    }
+
+    pub async fn request_password_reset(&self, email: &str) -> Result<()> {
+        // Check if user exists
+        let user = sqlx::query!(
+            "SELECT user_id FROM users.users WHERE email = $1 AND is_active = true",
+            email
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+        if let Some(user) = user {
+            // Generate reset token (use a secure random token)
+            let reset_token = Uuid::new_v4().to_string();
+            let expires_at = Utc::now() + Duration::hours(1); // Token expires in 1 hour
+
+            // Store reset token in database
+            sqlx::query!(
+                r#"
+                INSERT INTO users.password_reset_tokens (user_id, token, expires_at)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (user_id) DO UPDATE SET
+                    token = EXCLUDED.token,
+                    expires_at = EXCLUDED.expires_at,
+                    created_at = now()
+                "#,
+                user.user_id,
+                reset_token,
+                expires_at
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+            // TODO: Send email with reset link
+            // For now, we'll just log the token (in production, send email)
+            tracing::info!("Password reset token for {}: {}", email, reset_token);
+        }
+
+        Ok(())
+    }
+
+    pub async fn confirm_password_reset(&self, token: &str, new_password: &str) -> Result<()> {
+        // Validate password strength
+        if !self.validate_password_strength(new_password).await? {
+            return Err(SecureGuardError::ValidationError(
+                "Password does not meet security requirements".to_string()
+            ));
+        }
+
+        // Find valid reset token
+        let reset_data = sqlx::query!(
+            r#"
+            SELECT prt.user_id, u.password_history 
+            FROM users.password_reset_tokens prt
+            JOIN users.users u ON prt.user_id = u.user_id
+            WHERE prt.token = $1 AND prt.expires_at > now() AND prt.used = false
+            "#,
+            token
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?
+        .ok_or(SecureGuardError::ValidationError("Invalid or expired reset token".to_string()))?;
+
+        // Check password history
+        let history: Vec<String> = serde_json::from_value(reset_data.password_history.unwrap_or(Value::Array(vec![])))
+            .unwrap_or_default();
+        
+        for old_hash in &history {
+            if self.auth_service.verify_password(new_password, old_hash)? {
+                return Err(SecureGuardError::ValidationError(
+                    "Password has been used recently. Please choose a different password".to_string()
+                ));
+            }
+        }
+
+        // Hash new password
+        let new_hash = self.auth_service.hash_password(new_password)?;
+
+        // Update user password and mark token as used
+        let mut tx = self.pool.begin().await
+            .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+        sqlx::query!(
+            r#"
+            UPDATE users.users 
+            SET password_hash = $1, 
+                must_change_password = FALSE, 
+                password_last_changed = now(),
+                updated_at = now()
+            WHERE user_id = $2
+            "#,
+            new_hash,
+            reset_data.user_id
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+        sqlx::query!(
+            "UPDATE users.password_reset_tokens SET used = true WHERE token = $1",
+            token
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+        tx.commit().await
+            .map_err(|e| SecureGuardError::DatabaseError(e.to_string()))?;
+
+        Ok(())
     }
 }
 

@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS users.password_policies (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+
 -- Insert default password policy
 INSERT INTO users.password_policies (
     min_length, 

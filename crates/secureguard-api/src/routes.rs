@@ -22,6 +22,11 @@ fn auth_routes() -> Router<Database> {
         .route("/register", post(auth::register))
         .route("/login", post(auth::login))
         .route("/me", get(auth::me))
+        .route("/change-password", post(auth::change_password))
+        .route("/password-policy", get(auth::password_policy))
+        .route("/auth-status", get(auth::auth_status))
+        .route("/password-reset/request", post(auth::request_password_reset))
+        .route("/password-reset/confirm", post(auth::confirm_password_reset))
 }
 
 fn agent_routes() -> Router<Database> {

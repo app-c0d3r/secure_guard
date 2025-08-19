@@ -161,3 +161,58 @@ pub async fn auth_status(
 
     Ok((StatusCode::OK, Json(response)))
 }
+
+#[derive(Deserialize)]
+pub struct PasswordResetRequest {
+    pub email: String,
+}
+
+#[derive(Deserialize)]
+pub struct PasswordResetConfirm {
+    pub token: String,
+    pub new_password: String,
+}
+
+#[derive(Serialize)]
+pub struct PasswordResetResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+pub async fn request_password_reset(
+    State(db): State<Database>,
+    Json(request): Json<PasswordResetRequest>,
+) -> Result<(StatusCode, Json<PasswordResetResponse>), (StatusCode, Json<serde_json::Value>)> {
+    let auth_service = AuthService::new("your-secret-key-change-in-production".to_string());
+    let user_service = UserService::new(db.pool().clone(), auth_service);
+
+    // For security, always return success even if email doesn't exist
+    let _ = user_service.request_password_reset(&request.email).await;
+
+    let response = PasswordResetResponse {
+        success: true,
+        message: "If the email exists, a password reset link has been sent".to_string(),
+    };
+
+    Ok((StatusCode::OK, Json(response)))
+}
+
+pub async fn confirm_password_reset(
+    State(db): State<Database>,
+    Json(request): Json<PasswordResetConfirm>,
+) -> Result<(StatusCode, Json<PasswordResetResponse>), (StatusCode, Json<serde_json::Value>)> {
+    let auth_service = AuthService::new("your-secret-key-change-in-production".to_string());
+    let user_service = UserService::new(db.pool().clone(), auth_service);
+
+    user_service
+        .confirm_password_reset(&request.token, &request.new_password)
+        .await
+        .map_err(|e| handle_error(e))?;
+
+    let response = PasswordResetResponse {
+        success: true,
+        message: "Password has been reset successfully".to_string(),
+    };
+
+    Ok((StatusCode::OK, Json(response)))
+}
