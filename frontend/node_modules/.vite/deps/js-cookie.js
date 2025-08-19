@@ -1,4 +1,4 @@
-import "./chunk-HXA6O6EE.js";
+import "./chunk-4B2QHNJT.js";
 
 // node_modules/js-cookie/dist/js.cookie.mjs
 function assign(target) {

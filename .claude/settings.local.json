@@ -45,7 +45,8 @@
       "Bash(./scripts/demo_port_check:*)",
       "Bash(.scriptsmyservice.bat status prod)",
       "Bash(powershell:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": [],
