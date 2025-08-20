@@ -185,7 +185,8 @@ Follow these rules at all times:
 
 ### 4. Documentation Standards
     * use always "docs" folder for documentations files
-    * never write secrets or passwords or apikey hardcoded in a file, use best practices and if require for testing it localy so use separate file and mark as gitignore
+    * do not use "claude" or "anthropic" in comments or in git commits or in documents
+    * never write secrets or passwords or api key hardcoded in a file, use best practices and if require for testing it localy so use separate file and mark as gitignore
     * "Lastenheft.md": Produktkonzept
     * "SecureGuard Technical & Implementation Guide.md": system Overview & Core Principles, Technology Stack, Agent Architecture, Backend Architecture, Security & Compliance, Performance & Scalability, Testing & Quality Assurance, Implementation
     * README.md (The Front Door): A living document providing a high-level overview, setup instructions, and how to run the project. It must be complete before the first commit and updated with every major feature.

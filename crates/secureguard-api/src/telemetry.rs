@@ -1,4 +1,4 @@
-use opentelemetry::{global, KeyValue};
+use opentelemetry::{global, KeyValue, trace::TracerProvider};
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{
     metrics::{reader::DefaultAggregationSelector, MeterProviderBuilder, PeriodicReader},
@@ -29,7 +29,7 @@ pub fn init_telemetry() -> anyhow::Result<()> {
         ),
     ]);
 
-    // Initialize trace provider with OTLP exporter
+    // Initialize trace provider with OTLP exporter (optional for development)
     let trace_config = trace::config()
         .with_sampler(Sampler::AlwaysOn)
         .with_id_generator(RandomIdGenerator::default())
@@ -40,15 +40,37 @@ pub fn init_telemetry() -> anyhow::Result<()> {
     let otlp_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
         .unwrap_or_else(|_| "http://localhost:4317".to_string());
 
-    let tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(
-            opentelemetry_otlp::new_exporter()
-                .tonic()
-                .with_endpoint(otlp_endpoint.clone()),
-        )
-        .with_trace_config(trace_config)
-        .install_batch(runtime::Tokio)?;
+    let disable_otlp = std::env::var("DISABLE_OTLP_EXPORTER")
+        .map(|v| v == "true")
+        .unwrap_or(false);
+
+    let tracer = if disable_otlp {
+        // Use a no-op tracer for development
+        let provider = opentelemetry_sdk::trace::TracerProvider::builder()
+            .with_config(trace_config)
+            .build();
+        provider.tracer("secureguard-api")
+    } else {
+        // Try OTLP export, fall back to no-op if it fails
+        match opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_exporter(
+                opentelemetry_otlp::new_exporter()
+                    .tonic()
+                    .with_endpoint(otlp_endpoint.clone()),
+            )
+            .with_trace_config(trace_config)
+            .install_batch(runtime::Tokio) 
+        {
+            Ok(tracer) => tracer,
+            Err(e) => {
+                eprintln!("Warning: Failed to initialize OTLP exporter: {}. Using no-op tracer.", e);
+                let provider = opentelemetry_sdk::trace::TracerProvider::builder()
+                    .build();
+                provider.tracer("secureguard-api")
+            }
+        }
+    };
 
     // Set up tracing subscriber with OpenTelemetry layer
     let telemetry_layer = tracing_opentelemetry::layer().with_tracer(tracer);
@@ -122,10 +144,14 @@ pub fn init_telemetry() -> anyhow::Result<()> {
     // Initialize metrics with Prometheus exporter
     init_metrics(resource)?;
 
-    tracing::info!(
-        "OpenTelemetry initialized with OTLP endpoint: {}",
-        otlp_endpoint
-    );
+    if disable_otlp {
+        tracing::info!("OpenTelemetry initialized with OTLP exporter disabled for development");
+    } else {
+        tracing::info!(
+            "OpenTelemetry initialized with OTLP endpoint: {}",
+            otlp_endpoint
+        );
+    }
     
     tracing::info!(
         "Enhanced logging initialized - Console: enabled, Files: ./logs/ (daily rotation), Security audit: enabled, Error logs: enabled"

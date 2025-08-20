@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { 
   EyeIcon, 
   EyeSlashIcon,
@@ -23,7 +24,8 @@ export default function Login() {
   const [resetEmail, setResetEmail] = useState('')
   const [isResetLoading, setIsResetLoading] = useState(false)
 
-  const { login } = useAuthStore()
+  const { login, isAuthenticated } = useAuthStore()
+  const navigate = useNavigate()
   const {
     securityState,
     recordFailedAttempt,
@@ -31,6 +33,13 @@ export default function Login() {
     canAttemptLogin,
     formatTimeRemaining
   } = useLoginSecurity(email)
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
 
   // Auto-update countdown timer
   useEffect(() => {
@@ -142,6 +151,9 @@ export default function Login() {
         
         login(token, user)
         toast.success('Anmeldung erfolgreich!')
+        
+        // Navigate to dashboard after successful login
+        navigate('/dashboard', { replace: true })
       } else {
         recordFailedAttempt()
         throw new Error('Invalid credentials')
@@ -200,8 +212,8 @@ export default function Login() {
           <div className="card">
             <div className="card-body">
               <div className="text-center mb-8">
-                <div className="mx-auto h-12 w-12 bg-primary-100 rounded-full flex items-center justify-center mb-4">
-                  <LockClosedIcon className="icon-lg text-primary-600" />
+                <div className="mx-auto h-16 w-16 bg-primary-100 rounded-full flex items-center justify-center mb-4">
+                  <LockClosedIcon className="h-8 w-8 text-primary-600" />
                 </div>
                 <h2 className="text-2xl font-bold text-secondary-900">Passwort zurücksetzen</h2>
                 <p className="text-secondary-600 mt-2">
@@ -255,9 +267,9 @@ export default function Login() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full"
       >
-        <div className="text-center mb-8">
-          <div className="mx-auto h-12 w-12 bg-primary-600 rounded-full flex items-center justify-center mb-4">
-            <ShieldCheckIcon className="icon-lg text-white" />
+        <div className="text-center mb-6">
+          <div className="mx-auto h-16 w-16 bg-primary-600 rounded-full flex items-center justify-center mb-4">
+            <ShieldCheckIcon className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-secondary-900">SecureGuard</h1>
           <p className="text-secondary-600 mt-2">Sicheres Anmelden in Ihr Konto</p>

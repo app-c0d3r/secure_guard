@@ -29,7 +29,7 @@ function Start-DevEnvironment {
     if (-not (Test-Path "logs")) {
         New-Item -ItemType Directory -Path "logs" | Out-Null
     }
-    Write-Host "✅ Logs directory ready" -ForegroundColor Green
+    Write-Host "[OK] Logs directory ready" -ForegroundColor Green
     
     $env:DATABASE_URL = "postgresql://secureguard:password@localhost:5432/secureguard_dev"
     $env:RUST_LOG = "secureguard_api=debug,tower_http=debug,axum=debug"
@@ -48,10 +48,10 @@ function Start-DevEnvironment {
         Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '..\..\frontend'; `$env:PORT='3002'; npm run dev" -WindowStyle Normal
 
         Write-Host ""
-        Write-Host "✅ Development Environment Started" -ForegroundColor Green
-        Write-Host "🔗 Frontend: http://localhost:3002" -ForegroundColor Cyan
-        Write-Host "🔗 API: http://localhost:3000/api" -ForegroundColor Cyan
-        Write-Host "📊 Database: localhost:5432 (secureguard_dev)" -ForegroundColor Cyan
+        Write-Host "[OK] Development Environment Started" -ForegroundColor Green
+        Write-Host "Frontend: http://localhost:3002" -ForegroundColor Cyan
+        Write-Host "API: http://localhost:3000/api" -ForegroundColor Cyan
+        Write-Host "Database: localhost:5432 (secureguard_dev)" -ForegroundColor Cyan
         
     } catch {
         Write-Host "ERROR: $_" -ForegroundColor Red
@@ -67,7 +67,7 @@ function Start-ProdEnvironment {
     if (-not (Test-Path "logs")) {
         New-Item -ItemType Directory -Path "logs" | Out-Null
     }
-    Write-Host "✅ Logs directory ready" -ForegroundColor Green
+    Write-Host "[OK] Logs directory ready" -ForegroundColor Green
     
     $env:DATABASE_URL = "postgresql://secureguard:password@localhost:5432/secureguard_prod"
     $env:RUST_LOG = "secureguard_api=info"
@@ -90,10 +90,10 @@ function Start-ProdEnvironment {
         Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '..\..\frontend'; npm run build; npm run preview -- --port 3002" -WindowStyle Normal
 
         Write-Host ""
-        Write-Host "✅ Production Environment Started" -ForegroundColor Magenta
-        Write-Host "🔗 Frontend: http://localhost:3002" -ForegroundColor Cyan
-        Write-Host "🔗 API: http://localhost:3000/api" -ForegroundColor Cyan
-        Write-Host "📊 Database: localhost:5432 (secureguard_prod)" -ForegroundColor Cyan
+        Write-Host "[OK] Production Environment Started" -ForegroundColor Magenta
+        Write-Host "Frontend: http://localhost:3002" -ForegroundColor Cyan
+        Write-Host "API: http://localhost:3000/api" -ForegroundColor Cyan
+        Write-Host "Database: localhost:5432 (secureguard_prod)" -ForegroundColor Cyan
         
     } catch {
         Write-Host "ERROR: $_" -ForegroundColor Red
@@ -123,7 +123,7 @@ function Stop-Environment {
         docker-compose down 2>$null
         docker-compose -f docker-compose.prod.yml down 2>$null
 
-        Write-Host "✅ $($EnvType.ToUpper()) Environment Stopped" -ForegroundColor Green
+        Write-Host "[OK] $($EnvType.ToUpper()) Environment Stopped" -ForegroundColor Green
         
     } catch {
         Write-Host "ERROR: $_" -ForegroundColor Red

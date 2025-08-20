@@ -49,18 +49,18 @@ exit /b 1
 
 :show_help
 echo.
-echo ╔══════════════════════════════════════════════════════════════════════════╗
-echo ║                       SecureGuard Service Control                       ║
-echo ╚══════════════════════════════════════════════════════════════════════════╝
+echo ===============================================================================
+echo                        SecureGuard Service Control
+echo ===============================================================================
 echo.
 echo USAGE:
 echo   myservice [COMMAND]
 echo.
 echo COMMANDS:
-echo   start     🚀 Start production environment (optimized builds)
-echo   dev       🔧 Start development environment (debug mode + hot reload)
-echo   stop      ⛔ Stop all environments (development + production)
-echo   help      ❓ Show this help message
+echo   start     Start production environment (optimized builds)
+echo   dev       Start development environment (debug mode + hot reload)
+echo   stop      Stop all environments (development + production)
+echo   help      Show this help message
 echo.
 echo EXAMPLES:
 echo   myservice start          Start production environment
@@ -69,27 +69,27 @@ echo   myservice stop           Stop all services
 echo   myservice                Show this help (same as 'myservice help')
 echo.
 echo ENVIRONMENTS:
-echo   📦 Production  - Uses release builds, production database
-echo   🔧 Development - Uses debug builds, dev database, hot reload
+echo   Production  - Uses release builds, production database
+echo   Development - Uses debug builds, dev database, hot reload
 echo.
 echo SERVICES MANAGED:
-echo   🐘 PostgreSQL Database   (Port %DB_PORT% - Docker container)
-echo   🦀 Rust Backend API      (Port %BACKEND_PORT%)
-echo   ⚛️  React Frontend        (Port %FRONTEND_PORT%)
+echo   PostgreSQL Database   (Port %DB_PORT% - Docker container)
+echo   Rust Backend API      (Port %BACKEND_PORT%)
+echo   React Frontend        (Port %FRONTEND_PORT%)
 echo.
 echo FEATURES:
-echo   ✅ Automatic port conflict detection and cleanup
-echo   ✅ Docker auto-start and health checking  
-echo   ✅ Smart process management
-echo   ✅ Cross-platform compatibility
+echo   * Automatic port conflict detection and cleanup
+echo   * Docker auto-start and health checking  
+echo   * Smart process management
+echo   * Cross-platform compatibility
 echo.
 goto :eof
 
 :check_ports_and_cleanup
 echo.
-echo ╔══════════════════════════════════════════════════════════════════════════╗
-echo ║                     🔍 CHECKING FOR PORT CONFLICTS                      ║
-echo ╚══════════════════════════════════════════════════════════════════════════╝
+echo ===============================================================================
+echo                      CHECKING FOR PORT CONFLICTS
+echo ===============================================================================
 call :check_and_kill_port %FRONTEND_PORT% "React Frontend"
 call :check_and_kill_port %BACKEND_PORT% "Rust Backend API"
 echo.
@@ -100,18 +100,18 @@ set PORT=%1
 set SERVICE_NAME=%2
 set SERVICE_NAME=%SERVICE_NAME:"=%
 
-echo 🔍 Checking port %PORT% for %SERVICE_NAME%...
+echo [INFO] Checking port %PORT% for %SERVICE_NAME%...
 
 REM Check if port is in use
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":%PORT% "') do (
-    set PID=%%a
-    if defined PID (
-        echo ⚠️  Port %PORT% is occupied by PID !PID! - killing %SERVICE_NAME% process...
-        taskkill /f /pid !PID! >nul 2>&1
+    set PROCESS_ID=%%a
+    if defined PROCESS_ID (
+        echo [WARN] Port %PORT% is occupied by PID !PROCESS_ID! - killing %SERVICE_NAME% process...
+        taskkill /f /pid !PROCESS_ID! >nul 2>&1
         if !ERRORLEVEL! == 0 (
-            echo ✅ Successfully stopped existing %SERVICE_NAME% process
+            echo [OK] Successfully stopped existing %SERVICE_NAME% process
         ) else (
-            echo ❌ Failed to stop process !PID! - you may need to stop it manually
+            echo [ERROR] Failed to stop process !PROCESS_ID! - you may need to stop it manually
         )
     )
 )
@@ -119,24 +119,24 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":%PORT% "') do (
 REM Double-check the port is now free
 timeout /t 2 /nobreak >nul
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":%PORT% " 2^>nul') do (
-    echo ⚠️  Port %PORT% is still in use - please check manually
+    echo [WARN] Port %PORT% is still in use - please check manually
     goto :eof
 )
-echo ✅ Port %PORT% is now available for %SERVICE_NAME%
+echo [OK] Port %PORT% is now available for %SERVICE_NAME%
 goto :eof
 
 :start_dev
 echo.
-echo ╔══════════════════════════════════════════════════════════════════════════╗
-echo ║                    🔧 STARTING DEVELOPMENT ENVIRONMENT                   ║
-echo ╚══════════════════════════════════════════════════════════════════════════╝
+echo ===============================================================================
+echo                     STARTING DEVELOPMENT ENVIRONMENT
+echo ===============================================================================
 set DATABASE_URL=postgresql://secureguard:password@localhost:5432/secureguard_dev
 set RUST_LOG=secureguard_api=debug,tower_http=debug,axum=debug
 set NODE_ENV=development
 
 echo [0/3] Preparing logs directory...
 if not exist logs mkdir logs
-echo ✅ Logs directory ready
+echo [OK] Logs directory ready
 
 echo [1/3] Starting PostgreSQL Database (Development)...
 cd /d "%~dp0..\.."
@@ -154,7 +154,7 @@ timeout /t 5 /nobreak > nul
 start "SecureGuard Frontend [DEV]" cmd /k "cd /d "%~dp0..\.." && cd frontend && set PORT=3002 && npm run dev"
 
 echo.
-echo ✅ Development Environment Started
+echo [OK] Development Environment Started
 echo 🔗 Frontend: http://localhost:3002 (React + Vite)
 echo 🔗 API: http://localhost:3000/api
 echo 📊 Database: localhost:5432 (secureguard_dev)
@@ -163,16 +163,16 @@ goto :eof
 
 :start_prod
 echo.
-echo ╔══════════════════════════════════════════════════════════════════════════╗
-echo ║                    🚀 STARTING PRODUCTION ENVIRONMENT                    ║
-echo ╚══════════════════════════════════════════════════════════════════════════╝
+echo ===============================================================================
+echo                     STARTING PRODUCTION ENVIRONMENT
+echo ===============================================================================
 set DATABASE_URL=postgresql://secureguard:password@localhost:5432/secureguard_prod
 set RUST_LOG=secureguard_api=info
 set NODE_ENV=production
 
 echo [0/3] Preparing logs directory...
 if not exist logs mkdir logs
-echo ✅ Logs directory ready
+echo [OK] Logs directory ready
 
 echo [1/3] Starting PostgreSQL Database (Production)...
 cd /d "%~dp0..\.."
@@ -190,7 +190,7 @@ timeout /t 5 /nobreak > nul
 start "SecureGuard Frontend [PROD]" cmd /k "cd /d "%~dp0..\.." && cd frontend && npm run build && npm run preview -- --port 3002"
 
 echo.
-echo ✅ Production Environment Started
+echo [OK] Production Environment Started
 echo 🔗 Frontend: http://localhost:3002 (Production Build)
 echo 🔗 API: http://localhost:3000/api
 echo 📊 Database: localhost:5432 (secureguard_prod)
@@ -200,12 +200,12 @@ goto :eof
 
 :stop_all
 echo.
-echo ╔══════════════════════════════════════════════════════════════════════════╗
-echo ║                      ⛔ STOPPING ALL ENVIRONMENTS                        ║
-echo ╚══════════════════════════════════════════════════════════════════════════╝
+echo ===============================================================================
+echo                       STOPPING ALL ENVIRONMENTS
+echo ===============================================================================
 call :kill_processes
 echo.
-echo ✅ All SecureGuard services have been stopped
+echo [OK] All SecureGuard services have been stopped
 echo   🐘 PostgreSQL Database - Stopped
 echo   🦀 Rust Backend API - Stopped  
 echo   ⚛️  React Frontend - Stopped
